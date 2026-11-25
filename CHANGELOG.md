@@ -1,0 +1,13 @@
+# Changelog
+
+## Unreleased
+
+- Initial Debian 13 Cinnamon X11 provisioning implementation and staged lifecycle.
+- Strict NetworkManager translation with reboot-boundary commit/recovery.
+- Narrow Mint repository policy, actual APT candidate/solver tests and security audit.
+- Preserved reference appearance, icon utility, optional Windows asset workflows.
+- Official application repositories, native Gear Lever integration, latest initial
+  Notepadqq release and main-default Nemo Grid Compensator integration.
+- Windows exporter quick start, optional input directory and fresh-install checklist.
+
+Clean-install acceptance and initial public release remain pending.

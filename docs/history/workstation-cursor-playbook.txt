@@ -1,0 +1,815 @@
+# =============================================================================
+# Debian Workstation â€” Microsoft Windows cursor playbook
+# =============================================================================
+# Run these blocks in order as the regular desktop user (not root), from a
+# Cinnamon session on Debian 13 x86-64. sudo is used for system-wide changes.
+# Stop if any block fails; do not select a theme until installation and
+# verification succeed. Log out and back in after completing the playbook.
+#
+# Prerequisite: ~/Downloads/Windows-Cursors.zip containing files exported from
+# C:\Windows\Cursors on your own Windows installation. Do not commit the ZIP,
+# extracted artwork, or generated themes to the public repository.
+#
+# Output: /usr/share/icons/Windows-Aero-Light and Windows-Black.
+# These two named directories are replaced on repeated installation.
+# Aero Light uses animated busy indicators; Black uses static indicators and
+# shares Aero's hyperlink hand. No artwork inversion is performed.
+#
+# Converter: ani2xcursor 1.6.0, run directly as an AppImage via FUSE.
+# The pinned SHA-256 was observed on our tested download, not independently
+# authenticated against an upstream checksum.
+#
+# Validation: tested components on the Debian Cinnamon X11 development VM.
+# Full fresh-install acceptance and native Wayland testing remain outstanding.
+# libXcursor checks do not by themselves establish Wayland compatibility.
+# =============================================================================
+
+# 1. Install original Microsoft Windows Aero and Black cursor themes
+(
+    set -Eeuo pipefail
+
+    trap 'echo "ERROR at line $LINENO: $BASH_COMMAND" >&2' ERR
+
+    ARCHIVE="$HOME/Downloads/Windows-Cursors.zip"
+    VERSION="1.6.0"
+    SIZES="24,30,32,36,40,42,48,54,56,60,64,72,80,96,112,128"
+    INSTALL_DIR="/usr/share/icons"
+
+    # SHA-256 observed during our successful x86-64 test
+    SHA256="9ae4c9855061622e6007bf5f2d1f0713c56daf8451e239b843d00389b6235b6b"
+
+    if [ "$(uname -m)" != "x86_64" ]; then
+        echo "ERROR: Only x86-64 is currently supported." >&2
+        exit 1
+    fi
+
+    if [ ! -f "$ARCHIVE" ]; then
+        echo "ERROR: Cursor archive not found: $ARCHIVE" >&2
+        exit 1
+    fi
+
+    # Install dependencies
+    sudo apt install -y \
+        curl \
+        ca-certificates \
+        python3 \
+        python3-pil \
+        unzip \
+        libxcursor1 \
+        libfuse2t64
+
+    # Create isolated temporary build environment
+    WORKDIR=$(mktemp -d)
+    trap 'rm -rf -- "$WORKDIR"' EXIT
+
+    cd "$WORKDIR"
+
+    # Download pinned ani2xcursor AppImage
+    ASSET="ani2xcursor-v${VERSION}-linux-x86_64.AppImage"
+    URL="https://github.com/yuzujr/ani2xcursor/releases/download/v${VERSION}/${ASSET}"
+
+    curl --fail --location --retry 3 \
+        "$URL" \
+        --output ani2xcursor.AppImage
+
+    # Verify downloaded artifact
+    printf '%s  %s\n' "$SHA256" ani2xcursor.AppImage \
+        | sha256sum --check -
+
+    chmod 0755 ani2xcursor.AppImage
+
+    CONVERTER="$WORKDIR/ani2xcursor.AppImage"
+
+    "$CONVERTER" --version
+
+    # Extract user-provided Microsoft cursor artwork
+    mkdir -p microsoft input output themes
+
+    unzip -q "$ARCHIVE" -d microsoft
+
+    # Prepare both Microsoft cursor schemes
+    python3 - "$SIZES" <<'PY'
+from pathlib import Path
+import shutil
+import sys
+import json
+
+sizes = sys.argv[1]
+
+schemes = {
+    "Windows-Aero-Light": {
+        "pointer":     "aero_arrow.cur",
+        "help":        "aero_helpsel.cur",
+        "working":     "aero_working.ani",
+        "busy":        "aero_busy.ani",
+        "precision":   "cross_r.cur",
+        "text":        "beam_r.cur",
+        "hand":        "aero_pen.cur",
+        "unavailable": "aero_unavail.cur",
+        "vert":        "aero_ns.cur",
+        "horz":        "aero_ew.cur",
+        "dgn1":        "aero_nwse.cur",
+        "dgn2":        "aero_nesw.cur",
+        "move":        "aero_move.cur",
+        "alternate":   "aero_up.cur",
+        "link":        "aero_link.cur",
+        "person":      "aero_person.cur",
+        "pin":         "aero_pin.cur",
+    },
+    "Windows-Black": {
+        "pointer":     "arrow_r.cur",
+        "help":        "help_r.cur",
+        "working":     "wait_r.cur",
+        "busy":        "busy_r.cur",
+        "precision":   "cross_r.cur",
+        "text":        "beam_r.cur",
+        "hand":        "pen_r.cur",
+        "unavailable": "no_r.cur",
+        "vert":        "size4_r.cur",
+        "horz":        "size3_r.cur",
+        "dgn1":        "size2_r.cur",
+        "dgn2":        "size1_r.cur",
+        "move":        "move_r.cur",
+        "alternate":   "up_r.cur",
+        "link":        "aero_link.cur",
+        "person":      "person_r.cur",
+        "pin":         "pin_r.cur",
+    },
+}
+
+source = {
+    p.name.lower(): p
+    for p in Path("microsoft").rglob("*")
+    if p.is_file()
+}
+
+for theme, roles in schemes.items():
+    root = (Path("input") / theme).resolve()
+
+    manifest_dir = root / "ani2xcursor"
+    manifest_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"\n=== Preparing {theme} ===")
+
+    for role, filename in roles.items():
+        if filename.lower() not in source:
+            raise SystemExit(
+                f"Missing required cursor: {filename}"
+            )
+
+        shutil.copyfile(
+            source[filename.lower()],
+            root / filename
+        )
+
+        print(f"{role}: {filename}")
+
+    # Generate ani2xcursor manifest
+    lines = [
+        "[input]",
+        f'theme = "{theme}"',
+        f"dir = {json.dumps(str(root))}",
+        "",
+        "[files]",
+    ]
+
+    for role, filename in roles.items():
+        lines.append(f'{role} = "{filename}"')
+
+    lines += ["", "[sizes]"]
+
+    for role in roles:
+        lines.append(f'{role} = "{sizes}"')
+
+    manifest = manifest_dir / "manifest.toml"
+    manifest.write_text("\n".join(lines) + "\n")
+
+    print(f"Manifest generated: {theme}")
+PY
+
+    # Convert both cursor schemes independently
+    for THEME in Windows-Aero-Light Windows-Black; do
+
+        echo "=== Converting $THEME ==="
+
+        "$CONVERTER" "$WORKDIR/input/$THEME" \
+            --out "$WORKDIR/output" \
+            --resample bilinear
+
+        # Locate ani2xcursor's nested output directory
+        GENERATED="$WORKDIR/output/$THEME/xcursor"
+
+        if [ ! -f "$GENERATED/index.theme" ] || \
+           [ ! -d "$GENERATED/cursors" ]; then
+
+            echo "ERROR: Generated theme not found: $THEME" >&2
+            find "$WORKDIR/output" -maxdepth 4 -type d
+            exit 1
+        fi
+
+        # Stage theme using its final directory layout
+        cp -a "$GENERATED" "$WORKDIR/themes/$THEME"
+
+        test -f "$WORKDIR/themes/$THEME/cursors/left_ptr"
+
+    done
+
+    # Complete Linux cursor aliases and validate generated themes
+    python3 - "$SIZES" <<'PY'
+from pathlib import Path
+from collections import Counter
+import struct
+import sys
+
+sizes = set(map(int, sys.argv[1].split(",")))
+
+themes = [
+    "Windows-Aero-Light",
+    "Windows-Black",
+]
+
+# Supplement aliases already supplied by ani2xcursor
+aliases = {
+    "left_ptr": [
+        "default",
+        "arrow",
+        "top_left_arrow",
+    ],
+    "help": [
+        "question_arrow",
+        "whats_this",
+    ],
+    "left_ptr_watch": [
+        "progress",
+        "half-busy",
+        "08e8e1c95fe2fc01f976f1e063a24ccd",
+        "3ecb610c1bf2410f44200f48c40d3599",
+    ],
+    "watch": [
+        "wait",
+        "clock",
+    ],
+    "crosshair": [
+        "cross",
+        "tcross",
+        "precision",
+    ],
+    "xterm": [
+        "text",
+        "ibeam",
+    ],
+    "pencil": [
+        "handwriting",
+    ],
+    "not-allowed": [
+        "forbidden",
+        "no-drop",
+        "crossed_circle",
+        "dnd-none",
+        "03b6e0fcb3499374a867c041f52298f0",
+    ],
+    "sb_v_double_arrow": [
+        "ns-resize",
+        "size_ver",
+        "n-resize",
+        "s-resize",
+        "top_side",
+        "bottom_side",
+        "row-resize",
+        "00008160000006810000408080010102",
+        "2870a09082c103050810ffdffffe0204",
+    ],
+    "sb_h_double_arrow": [
+        "ew-resize",
+        "size_hor",
+        "e-resize",
+        "w-resize",
+        "left_side",
+        "right_side",
+        "col-resize",
+        "028006030e0e7ebffc7f7070c0600140",
+        "14fef782d02440884392942c11205230",
+    ],
+    "bd_double_arrow": [
+        "nwse-resize",
+        "size_fdiag",
+        "nw-resize",
+        "se-resize",
+        "top_left_corner",
+        "bottom_right_corner",
+    ],
+    "fd_double_arrow": [
+        "nesw-resize",
+        "size_bdiag",
+        "ne-resize",
+        "sw-resize",
+        "top_right_corner",
+        "bottom_left_corner",
+    ],
+    "fleur": [
+        "move",
+        "size_all",
+        "all-scroll",
+        "4498f0e0c1937ffe01fd06f973665830",
+    ],
+    "center_ptr": [
+        "up-arrow",
+        "up_arrow",
+    ],
+    "hand2": [
+        "pointer",
+        "hand",
+        "hand1",
+        "pointing_hand",
+        "9d800788f1b08800ae810202380a0822",
+        "e29285e634086352946a0e7090d73106",
+    ],
+}
+
+# XCursor image chunk identifier
+IMAGE_TYPE = 0xfffd0002
+
+
+def verify_cursor(path):
+    data = path.read_bytes()
+
+    if len(data) < 16 or data[:4] != b"Xcur":
+        raise ValueError(f"Invalid XCursor file: {path}")
+
+    header, version, ntoc = struct.unpack_from(
+        "<III", data, 4
+    )
+
+    if header < 16 or header + 12 * ntoc > len(data):
+        raise ValueError(f"Invalid XCursor header: {path}")
+
+    frames = Counter()
+
+    for i in range(ntoc):
+        kind, subtype, offset = struct.unpack_from(
+            "<III", data, header + 12 * i
+        )
+
+        if kind != IMAGE_TYPE:
+            continue
+
+        if offset + 36 > len(data):
+            raise ValueError(f"Truncated chunk: {path}")
+
+        (
+            chunk_header,
+            chunk_type,
+            nominal_size,
+            chunk_version,
+            width,
+            height,
+            xhot,
+            yhot,
+            delay,
+        ) = struct.unpack_from("<9I", data, offset)
+
+        if chunk_type != IMAGE_TYPE:
+            raise ValueError(f"Invalid image chunk: {path}")
+
+        if nominal_size != subtype:
+            raise ValueError(f"Invalid nominal size: {path}")
+
+        if not width or not height:
+            raise ValueError(f"Invalid dimensions: {path}")
+
+        if xhot >= width or yhot >= height:
+            raise ValueError(f"Invalid hotspot: {path}")
+
+        if chunk_header < 36:
+            raise ValueError(f"Invalid chunk header: {path}")
+
+        start = offset + chunk_header
+        end = start + width * height * 4
+
+        if end > len(data):
+            raise ValueError(f"Truncated image: {path}")
+
+        frames[nominal_size] += 1
+
+    missing = sizes - set(frames)
+
+    if missing:
+        raise ValueError(
+            f"{path.name}: missing sizes {sorted(missing)}"
+        )
+
+    return frames
+
+
+for name in themes:
+    theme = Path("themes") / name
+    cursors = theme / "cursors"
+
+    print(f"\n=== Verifying {name} ===")
+
+    added = 0
+
+    # Add supplementary cursor aliases
+    for canonical, names in aliases.items():
+        source = cursors / canonical
+
+        if not source.is_file():
+            raise ValueError(
+                f"{name}: missing cursor {canonical}"
+            )
+
+        for alias in names:
+            target = cursors / alias
+
+            if target.is_file():
+                continue
+
+            if target.is_symlink():
+                target.unlink()
+
+            target.symlink_to(canonical)
+            added += 1
+
+    print(f"Added {added} supplementary aliases.")
+
+    # Validate all real cursor files
+    count = 0
+
+    for path in sorted(cursors.iterdir()):
+        if path.is_file() and not path.is_symlink():
+            verify_cursor(path)
+            count += 1
+
+    if not count:
+        raise ValueError(f"No cursor files found: {name}")
+
+    # Aero has animated busy and working indicators.
+    # Windows Black uses static indicators.
+    expected_frames = 18 if name == "Windows-Aero-Light" else 1
+
+    for cursor in ("watch", "left_ptr_watch"):
+        frames = verify_cursor(cursors / cursor)
+
+        for size in sizes:
+            if frames[size] != expected_frames:
+                raise ValueError(
+                    f"{name}/{cursor}: unexpected frame "
+                    f"count at {size}px: {frames[size]}"
+                )
+
+    # Validate symbolic links
+    root = cursors.resolve()
+
+    for path in root.iterdir():
+        if path.is_symlink():
+            if not path.is_file():
+                raise ValueError(
+                    f"Broken cursor alias: {path}"
+                )
+
+            if not path.resolve().is_relative_to(root):
+                raise ValueError(
+                    f"External cursor alias: {path}"
+                )
+
+    # Write final theme metadata
+    (theme / "index.theme").write_text(
+        "[Icon Theme]\n"
+        f"Name={name}\n"
+        "Comment=Original Microsoft Windows cursors\n"
+        "Inherits=Adwaita\n"
+    )
+
+    # Metadata for Debian's x-cursor-theme alternatives
+    (theme / "cursor.theme").write_text(
+        "[Icon Theme]\n"
+        f"Name={name}\n"
+        f"Inherits={name}\n"
+    )
+
+    print(
+        f"Verified: {name} "
+        f"({count} cursor files, {len(sizes)} sizes)"
+    )
+
+print("\nBoth Microsoft cursor themes verified.")
+PY
+
+    # Install both verified themes system-wide
+    sudo mkdir -p "$INSTALL_DIR"
+
+    for THEME in Windows-Aero-Light Windows-Black; do
+
+        sudo rm -rf -- "$INSTALL_DIR/$THEME"
+
+        sudo cp -a \
+            "$WORKDIR/themes/$THEME" \
+            "$INSTALL_DIR/"
+
+        sudo chown -hR root:root \
+            "$INSTALL_DIR/$THEME"
+
+        echo "Installed: $INSTALL_DIR/$THEME"
+    done
+
+    echo "Microsoft Windows cursor installation complete."
+)
+
+# 2. Verify installed Microsoft Windows cursor themes
+# Safe to rerun after generating thumbnails.
+python3 <<'PY'
+import ctypes as C
+from pathlib import Path
+
+class CursorImage(C.Structure):
+    _fields_ = [
+        ("version", C.c_uint32),
+        ("size", C.c_uint32),
+        ("width", C.c_uint32),
+        ("height", C.c_uint32),
+        ("xhot", C.c_uint32),
+        ("yhot", C.c_uint32),
+        ("delay", C.c_uint32),
+        ("pixels", C.POINTER(C.c_uint32)),
+    ]
+
+lib = C.CDLL("libXcursor.so.1")
+
+lib.XcursorLibraryLoadImage.argtypes = [
+    C.c_char_p,
+    C.c_char_p,
+    C.c_int,
+]
+
+lib.XcursorLibraryLoadImage.restype = (
+    C.POINTER(CursorImage)
+)
+
+lib.XcursorImageDestroy.argtypes = [
+    C.POINTER(CursorImage)
+]
+
+lib.XcursorImageDestroy.restype = None
+
+sizes = [
+    24, 30, 32, 36, 40, 42, 48, 54,
+    56, 60, 64, 72, 80, 96, 112, 128,
+]
+
+themes = [
+    "Windows-Aero-Light",
+    "Windows-Black",
+]
+
+failures = 0
+checks = 0
+
+for theme in themes:
+    root = Path("/usr/share/icons") / theme / "cursors"
+
+    if not root.is_dir():
+        raise SystemExit(f"Theme not installed: {theme}")
+
+    for path in sorted(root.iterdir()):
+        # Cinnamon preview artwork is not an XCursor binary.
+        if path.name == "thumbnail.png":
+            continue
+
+        for size in sizes:
+            checks += 1
+
+            ptr = lib.XcursorLibraryLoadImage(
+                path.name.encode(),
+                theme.encode(),
+                size,
+            )
+
+            if not ptr:
+                print(f"FAIL: {theme}/{path.name} @ {size}")
+                failures += 1
+                continue
+
+            img = ptr.contents
+
+            if (
+                img.size != size
+                or img.xhot >= img.width
+                or img.yhot >= img.height
+            ):
+                print(
+                    f"FAIL: {theme}/{path.name} @ {size}"
+                    f" (returned {img.size})"
+                )
+                failures += 1
+
+            lib.XcursorImageDestroy(ptr)
+
+    print(f"Checked: {theme}")
+
+print(f"Total checks: {checks}")
+print(f"Failures: {failures}")
+
+if failures or not checks:
+    raise SystemExit(1)
+PY
+
+
+# 3. Configure desktop cursor defaults
+# Requires the existing LightDM GTK Greeter configuration from our playbook.
+# These explicit fallbacks may need updating if the cursor theme or size is
+# changed later through the GUI.
+(
+    set -euo pipefail
+
+    CURSOR_THEME="Windows-Aero-Light"
+    CURSOR_SIZE=32
+
+    test -f "/usr/share/icons/$CURSOR_THEME/cursors/left_ptr"
+
+    # Cinnamon desktop preferences
+    gsettings set org.cinnamon.desktop.interface \
+        cursor-theme "$CURSOR_THEME"
+
+    gsettings set org.cinnamon.desktop.interface \
+        cursor-size "$CURSOR_SIZE"
+
+    # GNOME-compatible applications
+    gsettings set org.gnome.desktop.interface \
+        cursor-theme "$CURSOR_THEME"
+
+    gsettings set org.gnome.desktop.interface \
+        cursor-size "$CURSOR_SIZE"
+
+    # User-level cursor fallback
+    for DIR in ~/.icons/default ~/.local/share/icons/default; do
+        mkdir -p "$DIR"
+
+        printf '[Icon Theme]\nInherits=%s\n' \
+            "$CURSOR_THEME" > "$DIR/index.theme"
+    done
+
+    # Preserve unrelated X11 resources
+    python3 - "$CURSOR_THEME" "$CURSOR_SIZE" <<'PY'
+from pathlib import Path
+import sys
+import re
+
+theme, size = sys.argv[1:]
+path = Path.home() / ".Xresources"
+
+lines = path.read_text().splitlines() if path.exists() else []
+
+lines = [
+    line for line in lines
+    if not re.match(
+        r"^\s*Xcursor\.(theme|size)\s*:",
+        line
+    )
+]
+
+lines.extend([
+    f"Xcursor.theme: {theme}",
+    f"Xcursor.size: {size}",
+])
+
+path.write_text("\n".join(lines) + "\n")
+PY
+
+    # Apply X11 cursor resources to current session
+    if [ "${XDG_SESSION_TYPE:-}" = "x11" ]; then
+        xrdb -merge "$HOME/.Xresources"
+    fi
+
+    # Register both cursor themes with Debian's alternatives system
+    for THEME in Windows-Aero-Light Windows-Black; do
+        sudo update-alternatives --install \
+            /usr/share/icons/default/index.theme \
+            x-cursor-theme \
+            "/usr/share/icons/$THEME/cursor.theme" \
+            50
+    done
+
+    # Configure system-wide fallback
+    sudo update-alternatives --set \
+        x-cursor-theme \
+        "/usr/share/icons/$CURSOR_THEME/cursor.theme"
+
+    # Configure LightDM GTK Greeter
+    sudo sed -i \
+        "s/^cursor-theme-name=.*/cursor-theme-name=$CURSOR_THEME/" \
+        /etc/lightdm/lightdm-gtk-greeter.conf
+)
+
+# 4. Generate high-quality, centered cursor theme thumbnails
+# Always regenerate from the 128px cursor, not from an existing thumbnail.
+# This changes previews only, never cursor artwork or hotspots.
+sudo python3 <<'PY'
+import ctypes as C
+from pathlib import Path
+from PIL import Image
+
+CANVAS_SIZE = 32
+ARTWORK_SIZE = 28
+SOURCE_SIZE = 128
+
+class CursorImage(C.Structure):
+    _fields_ = [
+        ("version", C.c_uint32),
+        ("size", C.c_uint32),
+        ("width", C.c_uint32),
+        ("height", C.c_uint32),
+        ("xhot", C.c_uint32),
+        ("yhot", C.c_uint32),
+        ("delay", C.c_uint32),
+        ("pixels", C.POINTER(C.c_uint32)),
+    ]
+
+lib = C.CDLL("libXcursor.so.1")
+
+lib.XcursorFilenameLoadImage.argtypes = [
+    C.c_char_p, C.c_int
+]
+lib.XcursorFilenameLoadImage.restype = C.POINTER(CursorImage)
+
+lib.XcursorImageDestroy.argtypes = [
+    C.POINTER(CursorImage)
+]
+lib.XcursorImageDestroy.restype = None
+
+for theme in ("Windows-Aero-Light", "Windows-Black"):
+    root = Path("/usr/share/icons") / theme / "cursors"
+
+    # Load high-resolution original artwork
+    ptr = lib.XcursorFilenameLoadImage(
+        str(root / "left_ptr").encode(),
+        SOURCE_SIZE
+    )
+
+    if not ptr:
+        raise RuntimeError(f"Cannot load cursor: {theme}")
+
+    try:
+        img = ptr.contents
+        pixels = []
+
+        # Convert premultiplied ARGB to straight RGBA
+        for i in range(img.width * img.height):
+            p = img.pixels[i]
+
+            a = (p >> 24) & 255
+            r = (p >> 16) & 255
+            g = (p >> 8) & 255
+            b = p & 255
+
+            if a:
+                r = min(255, round(r * 255 / a))
+                g = min(255, round(g * 255 / a))
+                b = min(255, round(b * 255 / a))
+            else:
+                r = g = b = 0
+
+            pixels.append((r, g, b, a))
+
+        artwork = Image.new(
+            "RGBA", (img.width, img.height)
+        )
+        artwork.putdata(pixels)
+
+    finally:
+        lib.XcursorImageDestroy(ptr)
+
+    # Remove transparent padding
+    bounds = artwork.getchannel("A").getbbox()
+
+    if bounds is None:
+        raise ValueError(f"Empty cursor: {theme}")
+
+    artwork = artwork.crop(bounds)
+
+    # High-quality proportional downsampling
+    artwork.thumbnail(
+        (ARTWORK_SIZE, ARTWORK_SIZE),
+        Image.Resampling.LANCZOS
+    )
+
+    # Center on transparent canvas
+    canvas = Image.new(
+        "RGBA",
+        (CANVAS_SIZE, CANVAS_SIZE),
+        (0, 0, 0, 0)
+    )
+
+    x = (CANVAS_SIZE - artwork.width) // 2
+    y = (CANVAS_SIZE - artwork.height) // 2
+
+    canvas.alpha_composite(artwork, (x, y))
+
+    output = root / "thumbnail.png"
+    canvas.save(output)
+    output.chmod(0o644)
+
+    print(f"Generated: {output}")
+PY
+
+# Close and reopen Cinnamon Themes to refresh the previews.
+# Log out and back in to reload cursor preferences throughout the session.

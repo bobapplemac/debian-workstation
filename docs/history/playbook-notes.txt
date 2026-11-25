@@ -1,0 +1,2207 @@
+apt update
+apt full-upgrade -y
+apt install -y sudo curl wget ca-certificates nano
+
+# create regular user account
+adduser desktopuser
+usermod -aG sudo desktopuser
+
+# enable passwordless sudo
+echo 'desktopuser ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/90-desktopuser
+chmod 0440 /etc/sudoers.d/90-desktopuser
+visudo -cf /etc/sudoers
+
+# set up desktop
+apt install \
+    task-cinnamon-desktop \
+    firefox-esr \
+    libreoffice-calc- \
+    libreoffice-gnome- \
+    libreoffice-impress- \
+    libreoffice-writer- \
+    hexchat- \
+    pidgin- \
+    transmission-gtk- \
+    deluge- \
+    qbittorrent- \
+    balsa- \
+    bsd-mailx- \
+    claws-mail- \
+    edbrowse- \
+    emacs-gtk- \
+    emacs-lucid- \
+    emacs-nox- \
+    emacs-pgtk- \
+    evolution- \
+    geary- \
+    gnumail.app- \
+    im- \
+    jed- \
+    kmail- \
+    mailutils- \
+    mailutils-mh- \
+    mew- \
+    mew-beta- \
+    mew-beta-bin- \
+    mew-bin- \
+    mutt- \
+    neomutt- \
+    nmh- \
+    s-nail- \
+    sup-mail- \
+    sylpheed- \
+    thunderbird- \
+    vm- \
+    wl- \
+    wl-beta- \
+    xjed-
+
+# proxmox/qemu/kvm
+apt install -y qemu-guest-agent spice-vdagent
+systemctl enable --now qemu-guest-agent
+
+# vmware
+apt install -y open-vm-tools-desktop
+
+# hyper-v
+apt install -y hyperv-daemons
+
+# Configure graphical boot
+systemctl set-default graphical.target
+reboot
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Install LightDM GTK Greeter and Papirus icons
+sudo apt install -y lightdm-gtk-greeter papirus-icon-theme
+
+# Configure LightDM to use the GTK Greeter
+sudo mkdir -p /etc/lightdm/lightdm.conf.d
+
+sudo tee /etc/lightdm/lightdm.conf.d/99-local.conf > /dev/null <<'EOF'
+[Seat:*]
+greeter-session=lightdm-gtk-greeter
+greeter-hide-users=false
+greeter-show-manual-login=true
+EOF
+
+# Preserve the original GTK Greeter configuration
+sudo cp -n /etc/lightdm/lightdm-gtk-greeter.conf \
+    /etc/lightdm/lightdm-gtk-greeter.conf.orig
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Migrate to NetworkManager
+sudo bash <<'EOF'
+set -euo pipefail
+
+apt install -y network-manager
+
+# Ensure NetworkManager is running
+systemctl enable --now NetworkManager
+
+# Preserve the original network configuration
+cp -n /etc/network/interfaces /etc/network/interfaces.orig
+
+# Detect and migrate simple DHCP Ethernet interfaces
+while read -r iface; do
+    echo "Migrating $iface to NetworkManager..."
+
+    if ! nmcli connection show "Wired-$iface" >/dev/null 2>&1; then
+        nmcli connection add \
+            type ethernet \
+            ifname "$iface" \
+            con-name "Wired-$iface" \
+            connection.autoconnect yes \
+            ipv4.method auto \
+            ipv6.method auto
+    fi
+
+    sed -i \
+        -e "/^allow-hotplug ${iface}$/d" \
+        -e "/^auto ${iface}$/d" \
+        -e "/^iface ${iface} inet dhcp$/d" \
+        /etc/network/interfaces
+
+done < <(awk '$1 == "iface" && $3 == "inet" && $4 == "dhcp" {print $2}' \
+    /etc/network/interfaces)
+
+EOF
+sudo reboot
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# dark terminal background
+PROFILE=$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d "'")
+SCHEMA="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${PROFILE}/"
+
+gsettings set "$SCHEMA" use-theme-colors false
+gsettings set "$SCHEMA" background-color '#0C0C0C'
+gsettings set "$SCHEMA" foreground-color '#CCCCCC'
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Configure the signed LMDE 7 (Gigi) repository and install desktop integration
+# Run as the regular desktop user with sudo; Debian 13 only.
+(
+    set -euo pipefail
+
+    sudo apt install -y gnupg ca-certificates
+
+    FINGERPRINT="302F0738F465C1535761F965A6616109451BBBF2"
+    WORKDIR=$(mktemp -d)
+    trap 'rm -rf "$WORKDIR"' EXIT
+    chmod 0700 "$WORKDIR"
+
+    gpg --homedir "$WORKDIR" --batch \
+        --keyserver hkps://keyserver.ubuntu.com \
+        --recv-keys "$FINGERPRINT"
+
+    gpg --homedir "$WORKDIR" --batch --export "$FINGERPRINT" \
+        > "$WORKDIR/linuxmint.gpg"
+    test -s "$WORKDIR/linuxmint.gpg"
+
+    sudo install -d -m 0755 /etc/apt/keyrings
+    sudo install -m 0644 "$WORKDIR/linuxmint.gpg" \
+        /etc/apt/keyrings/linuxmint.gpg
+
+    # Permit only the approved Mint packages before enabling the repository.
+    sudo tee /etc/apt/preferences.d/linuxmint > /dev/null <<'EOF'
+# Linux Mint theme packages
+Package: mint-themes mint-x-icons mint-y-icons mint-cursor-themes
+Pin: origin "fastly.linuxmint.io"
+Pin-Priority: 500
+
+# Linux Mint patched libadwaita
+Package: libadwaita-1-0 gir1.2-adw-1 libadwaita-1-dev libadwaita-1-doc libadwaita-1-examples
+Pin: origin "fastly.linuxmint.io"
+Pin-Priority: 500
+
+# Linux Mint XApp desktop integration
+Package: xdg-desktop-portal-xapp xapp-symbolic-icons
+Pin: origin "fastly.linuxmint.io"
+Pin-Priority: 500
+
+# Block all other Linux Mint packages
+Package: *
+Pin: origin "fastly.linuxmint.io"
+Pin-Priority: -1
+EOF
+
+    sudo tee /etc/apt/sources.list.d/linuxmint.sources > /dev/null <<'EOF'
+Types: deb
+URIs: https://fastly.linuxmint.io/
+Suites: gigi
+Components: main upstream backport
+Signed-By: /etc/apt/keyrings/linuxmint.gpg
+EOF
+
+    sudo apt update
+)
+
+# Inspect package candidates and simulate before installation.
+# Expected on the R&D baseline: 5 new packages, 3 upgrades, no removals.
+apt-cache policy mint-themes mint-x-icons mint-y-icons mint-cursor-themes \
+    libadwaita-1-0 gir1.2-adw-1 xdg-desktop-portal-xapp xapp-symbolic-icons \
+    cinnamon muffin nemo libgtk-4-1 libxapp1
+
+apt-get -s install mint-themes mint-x-icons mint-y-icons mint-cursor-themes \
+    libadwaita-1-0 gir1.2-adw-1 xdg-desktop-portal-xapp xapp-symbolic-icons
+apt-get -s full-upgrade
+
+# Review simulation before proceeding. No unrelated upgrades or removals.
+sudo apt install -y \
+    mint-themes \
+    mint-x-icons \
+    mint-y-icons \
+    mint-cursor-themes \
+    libadwaita-1-0 \
+    gir1.2-adw-1 \
+    xdg-desktop-portal-xapp \
+    xapp-symbolic-icons
+
+# Observed working versions (not version locks):
+# mint-themes 2.3.8; mint-x-icons 1.7.5; mint-y-icons 1.9.1
+# mint-cursor-themes 1.0.2; libadwaita and GIR 1.7.6+mint2+gigi
+# xdg-desktop-portal-xapp 1.1.3+gigi; xapp-symbolic-icons 1.0.9
+# TODO: review Debian/Mint security update handling before production deployment.
+# No manual extraction or cleanup needed on a fresh installation.
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Install universal Mint-X/Mint-Y window control glyphs
+(
+    set -euo pipefail
+
+    WORKDIR=$(mktemp -d)
+    trap 'rm -rf "$WORKDIR"' EXIT
+
+    # Minimize
+    cat > "$WORKDIR/window-minimize-symbolic.svg" <<'EOF'
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <path fill="#2e3436" d="M3 9H13V10.25H3Z"/>
+</svg>
+EOF
+
+    # Maximize
+    cat > "$WORKDIR/window-maximize-symbolic.svg" <<'EOF'
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <path fill="#2e3436" fill-rule="evenodd" d="M3 3H13V13H3Z M4.25 4.25V11.75H11.75V4.25Z"/>
+</svg>
+EOF
+
+    # Restore
+    cat > "$WORKDIR/window-restore-symbolic.svg" <<'EOF'
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <path fill="#2e3436" d="M5 2H14V11H11V9.75H12.75V3.25H6.25V5H5Z"/>
+  <path fill="#2e3436" fill-rule="evenodd" d="M2 5H11V14H2Z M3.25 6.25V12.75H9.75V6.25Z"/>
+</svg>
+EOF
+
+    # Close
+    cat > "$WORKDIR/window-close-symbolic.svg" <<'EOF'
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <path fill="#2e3436" d="M3.88 3L8 7.12L12.12 3L13 3.88L8.88 8L13 12.12L12.12 13L8 8.88L3.88 13L3 12.12L7.12 8L3 3.88Z"/>
+</svg>
+EOF
+
+    # Extend the original Mint-X icon theme
+    ICON_DIR="$HOME/.local/share/icons/Mint-X/actions/scalable"
+
+    mkdir -p "$ICON_DIR"
+    install -m 0644 "$WORKDIR/"*.svg "$ICON_DIR/"
+
+    # Extend the original Mint-Y icon theme
+    ICON_DIR="$HOME/.local/share/icons/Mint-Y/actions/symbolic"
+
+    mkdir -p "$ICON_DIR"
+    install -m 0644 "$WORKDIR/"*.svg "$ICON_DIR/"
+
+    echo "Universal window control glyphs installed."
+)
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Configure universal GTK3 window decorations
+mkdir -p ~/.config/gtk-3.0
+
+cat > ~/.config/gtk-3.0/window-controls.css <<'EOF'
+/*
+ * Andrew's Universal Window Decorations
+ * GTK3 / Cinnamon / Muffin
+ */
+
+/* Window geometry */
+
+headerbar.default-decoration,
+.default-decoration.titlebar:not(headerbar),
+window > .titlebar:not(headerbar),
+window.csd > .titlebar:not(headerbar),
+window.csd > decoration,
+window.ssd > decoration,
+window.solid-csd > decoration {
+    border-radius: 6px 6px 0 0;
+}
+
+/* Maximized and tiled windows */
+
+.maximized headerbar.default-decoration,
+.maximized .default-decoration.titlebar:not(headerbar),
+window.maximized > .titlebar,
+window.maximized > decoration,
+window.tiled > .titlebar,
+window.tiled > decoration {
+    border-radius: 0;
+}
+
+/* Common window button styling */
+
+headerbar button.titlebutton,
+.titlebar button.titlebutton,
+headerbar.default-decoration button.titlebutton,
+.titlebar.default-decoration button.titlebutton {
+    border-radius: 0;
+    border-width: 0;
+    border-color: transparent;
+    box-shadow: none;
+    background-image: none;
+    background-color: transparent;
+    text-shadow: none;
+    min-width: 44px;
+    min-height: 30px;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+}
+
+/* Use the selected icon theme */
+
+headerbar button.titlebutton.minimize,
+headerbar button.titlebutton.maximize,
+headerbar button.titlebutton.close,
+.titlebar button.titlebutton.minimize,
+.titlebar button.titlebutton.maximize,
+.titlebar button.titlebutton.close {
+    -gtk-icon-theme: initial;
+    background-image: none;
+    background-color: transparent;
+    color: inherit;
+}
+
+/* Symbolic glyph styling */
+
+headerbar button.titlebutton image,
+.titlebar button.titlebutton image {
+    color: inherit;
+    -gtk-icon-transform: scale(1.0);
+    -gtk-icon-shadow: none;
+}
+
+/* Inactive window controls */
+
+headerbar button.titlebutton:backdrop,
+.titlebar button.titlebutton:backdrop {
+    color: inherit;
+    opacity: 0.65;
+    background-image: none;
+    background-color: transparent;
+}
+
+/* Minimize/maximize hover */
+
+headerbar button.titlebutton.minimize:hover,
+headerbar button.titlebutton.maximize:hover,
+.titlebar button.titlebutton.minimize:hover,
+.titlebar button.titlebutton.maximize:hover {
+    opacity: 1;
+    background-image: none;
+    background-color: alpha(currentColor, 0.10);
+}
+
+/* Minimize/maximize pressed */
+
+headerbar button.titlebutton.minimize:active,
+headerbar button.titlebutton.maximize:active,
+.titlebar button.titlebutton.minimize:active,
+.titlebar button.titlebutton.maximize:active {
+    opacity: 1;
+    background-image: none;
+    background-color: alpha(currentColor, 0.18);
+}
+
+/* Close hover */
+
+headerbar button.titlebutton.close:hover,
+.titlebar button.titlebutton.close:hover {
+    opacity: 1;
+    background-image: none;
+    background-color: #e81123;
+    color: #ffffff;
+}
+
+/* Close pressed */
+
+headerbar button.titlebutton.close:active,
+.titlebar button.titlebutton.close:active {
+    opacity: 1;
+    background-image: none;
+    background-color: #c50f1f;
+    color: #ffffff;
+}
+
+/* Muffin server-side title bar geometry */
+
+headerbar.default-decoration,
+.titlebar.default-decoration {
+    min-height: 32px;
+    padding: 0;
+    border-width: 0;
+}
+
+/* Compensate for Muffin's hardcoded button spacing */
+
+headerbar.default-decoration button.titlebutton,
+.titlebar.default-decoration button.titlebutton {
+    min-width: 46px;
+    min-height: 32px;
+    margin: 0 -3px;
+    padding: 0;
+    border-width: 0;
+    border-radius: 0;
+    background-image: none;
+    background-size: auto;
+}
+EOF
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Configure universal GTK4 / libadwaita window decorations
+mkdir -p ~/.config/gtk-4.0
+
+cat > ~/.config/gtk-4.0/window-controls.css <<'EOF'
+/*
+ * Andrew's Universal Window Decorations
+ * GTK4 / libadwaita
+ */
+
+/* Window geometry */
+
+window.csd:not(.maximized):not(.fullscreen):not(.tiled) {
+    border-radius: 6px 6px 0 0;
+}
+
+window.csd:not(.maximized):not(.fullscreen):not(.tiled) .titlebar {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+window.csd.maximized,
+window.csd.fullscreen,
+window.csd.tiled {
+    border-radius: 0;
+}
+
+/* Contiguous window controls */
+
+windowcontrols {
+    border-spacing: 0;
+}
+
+/* Outer button geometry */
+
+windowcontrols > button {
+    border-radius: 0;
+    border-width: 0;
+    box-shadow: none;
+    background-image: none;
+    background-color: transparent;
+    min-width: 46px;
+    min-height: 32px;
+    margin: 0;
+    padding: 0;
+    color: inherit;
+}
+
+/* Remove libadwaita's inner circular backgrounds */
+
+windowcontrols > button > image,
+windowcontrols > button:hover > image,
+windowcontrols > button:active > image,
+windowcontrols > button:backdrop > image {
+    background: none;
+    border-radius: 0;
+    border-width: 0;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+}
+
+/* Inactive windows */
+
+windowcontrols > button:backdrop {
+    opacity: 0.65;
+    background-color: transparent;
+}
+
+/* Minimize/maximize hover */
+
+windowcontrols > button.minimize:hover,
+windowcontrols > button.maximize:hover,
+windowcontrols > button.restore:hover {
+    opacity: 1;
+    background-color: alpha(currentColor, 0.10);
+}
+
+/* Minimize/maximize pressed */
+
+windowcontrols > button.minimize:active,
+windowcontrols > button.maximize:active,
+windowcontrols > button.restore:active {
+    opacity: 1;
+    background-color: alpha(currentColor, 0.18);
+}
+
+/* Close hover */
+
+windowcontrols > button.close:hover {
+    opacity: 1;
+    background-color: #e81123;
+    color: #ffffff;
+}
+
+/* Close pressed */
+
+windowcontrols > button.close:active {
+    opacity: 1;
+    background-color: #c50f1f;
+    color: #ffffff;
+}
+EOF
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Enable universal window decoration stylesheets
+python3 <<'PY'
+from pathlib import Path
+
+entry = '@import url("window-controls.css");'
+
+for version in ("gtk-3.0", "gtk-4.0"):
+    path = Path.home() / ".config" / version / "gtk.css"
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    if path.is_symlink():
+        print(f"Skipping symbolic link: {path}")
+        continue
+
+    existing = path.read_text() if path.exists() else ""
+
+    if entry not in existing:
+        if path.exists():
+            backup = path.with_name("gtk.css.before-desktopuser")
+            if not backup.exists():
+                backup.write_text(existing)
+
+        path.write_text(entry + "\n" + existing)
+
+    print(f"Configured: {path}")
+PY
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+# Configure Cinnamon desktop appearance
+
+# Application theme
+gsettings set org.cinnamon.desktop.interface gtk-theme 'Mint-Y-Blue'
+
+# Icon theme
+gsettings set org.cinnamon.desktop.interface icon-theme 'Mint-Y-Blue'
+
+# Desktop shell (dark taskbar and menu)
+gsettings set org.cinnamon.theme name 'Mint-Y-Dark-Blue'
+
+# Traditional window button arrangement
+gsettings set org.cinnamon.desktop.wm.preferences \
+    button-layout ':minimize,maximize,close'
+
+# Cursor theme and size are configured separately
+# after installing the Windows cursor themes.
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Reload portal units and services from the logged-in desktop session.
+# A logout/login or reboot also reloads the session and libraries.
+systemctl --user daemon-reload
+systemctl --user restart xdg-desktop-portal-xapp.service
+systemctl --user restart xdg-desktop-portal.service
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Verify desktop theme settings
+
+echo "=== DESKTOP APPEARANCE ==="
+gsettings get org.cinnamon.desktop.interface gtk-theme
+gsettings get org.cinnamon.desktop.interface icon-theme
+gsettings get org.cinnamon.theme name
+gsettings get org.cinnamon.desktop.wm.preferences button-layout
+
+echo "=== GTK OVERRIDES ==="
+cat ~/.config/gtk-3.0/gtk.css
+cat ~/.config/gtk-4.0/gtk.css
+
+echo "=== INSTALLED THEMES ==="
+ls -d /usr/share/themes/Mint-*
+ls -d /usr/share/icons/Mint-*
+
+echo "=== CUSTOM WINDOW GLYPHS ==="
+ls -l ~/.local/share/icons/Mint-X/actions/scalable/
+ls -l ~/.local/share/icons/Mint-Y/actions/symbolic/
+
+# Verify custom glyph resolution across all Mint icon themes
+
+python3 <<'PY'
+import gi
+from pathlib import Path
+
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
+
+root = Path('/usr/share/icons')
+local = Path.home() / '.local/share/icons'
+
+themes = sorted(
+    p.name for p in root.glob('Mint-*')
+    if (p / 'index.theme').is_file()
+)
+
+failures = 0
+
+for name in themes:
+    theme = Gtk.IconTheme.new()
+    theme.set_custom_theme(name)
+
+    passed = True
+
+    for button in ('minimize', 'maximize', 'restore', 'close'):
+        info = theme.lookup_icon(
+            f'window-{button}-symbolic', 16, 0
+        )
+
+        filename = info.get_filename() if info else None
+
+        if not filename or not filename.startswith(
+            str(local) + '/'
+        ):
+            passed = False
+            print(f'  {button}: {filename}')
+
+    print(f'{"PASS" if passed else "FAIL"}: {name}')
+
+    if not passed:
+        failures += 1
+
+if not themes:
+    raise SystemExit("ERROR: No Mint icon themes found")
+
+if failures:
+    raise SystemExit(f"ERROR: {failures} themes failed verification")
+
+print(f"Successfully verified all {len(themes)} Mint icon themes.")
+PY
+
+
+
+# Verify installed integration packages and portal accent color.
+dpkg-query -W mint-themes mint-x-icons mint-y-icons mint-cursor-themes \
+    libadwaita-1-0 gir1.2-adw-1 xdg-desktop-portal-xapp xapp-symbolic-icons
+
+apt-get -s full-upgrade
+
+gdbus call --session \
+    --dest org.freedesktop.portal.Desktop \
+    --object-path /org/freedesktop/portal/desktop \
+    --method org.freedesktop.portal.Settings.Read \
+    org.freedesktop.appearance accent-color
+
+# Expected for Mint-Y-Blue: RGB tuple approximately (0.04706, 0.45882, 0.87059).
+# Visual QA: open GNOME Terminal and Sudoku, check custom glyphs, rectangular
+# buttons, red close hover, and visible accent-colored radio and Start Game buttons.
+# Switch GTK themes and confirm accent color follows the theme; restore Mint-Y-Blue.
+# Clean-install and repeated-run validation still pending.
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+install -Dm755 ./mint-y-app-icons ~/.local/bin/mint-y-app-icons
+~/.local/bin/mint-y-app-icons apply
+~/.local/bin/mint-y-app-icons verify
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# desktop icons
+gsettings set org.nemo.desktop computer-icon-visible true
+gsettings set org.nemo.desktop home-icon-visible true
+gsettings set org.nemo.desktop trash-icon-visible true
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# set up clock
+gdbus call --session --dest org.Cinnamon --object-path /org/Cinnamon \
+  --method org.Cinnamon.Eval \
+  '(() => {
+    const clock = imports.ui.appletManager.getRunningInstancesForUuid("calendar@cinnamon.org")[0];
+    clock.settings.setValue("custom-format", "%-I:%M:%S %p%n%-m/%-d/%Y");
+    clock.settings.setValue("use-custom-format", true);
+    clock._onSettingsChanged();
+  })()'
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# =============================================================================
+# Debian Workstation â€” Microsoft Windows cursor playbook
+# =============================================================================
+# Run these blocks in order as the regular desktop user (not root), from a
+# Cinnamon session on Debian 13 x86-64. sudo is used for system-wide changes.
+# Stop if any block fails; do not select a theme until installation and
+# verification succeed. Log out and back in after completing the playbook.
+#
+# Prerequisite: ~/Downloads/Windows-Cursors.zip containing files exported from
+# C:\Windows\Cursors on your own Windows installation. Do not commit the ZIP,
+# extracted artwork, or generated themes to the public repository.
+#
+# Output: /usr/share/icons/Windows-Aero-Light and Windows-Black.
+# These two named directories are replaced on repeated installation.
+# Aero Light uses animated busy indicators; Black uses static indicators and
+# shares Aero's hyperlink hand. No artwork inversion is performed.
+#
+# Converter: ani2xcursor 1.6.0, run directly as an AppImage via FUSE.
+# The pinned SHA-256 was observed on our tested download, not independently
+# authenticated against an upstream checksum.
+#
+# Validation: tested components on the Debian Cinnamon X11 development VM.
+# Full fresh-install acceptance and native Wayland testing remain outstanding.
+# libXcursor checks do not by themselves establish Wayland compatibility.
+# =============================================================================
+
+# 1. Install original Microsoft Windows Aero and Black cursor themes
+(
+    set -Eeuo pipefail
+
+    trap 'echo "ERROR at line $LINENO: $BASH_COMMAND" >&2' ERR
+
+    ARCHIVE="$HOME/Downloads/Windows-Cursors.zip"
+    VERSION="1.6.0"
+    SIZES="24,30,32,36,40,42,48,54,56,60,64,72,80,96,112,128"
+    INSTALL_DIR="/usr/share/icons"
+
+    # SHA-256 observed during our successful x86-64 test
+    SHA256="9ae4c9855061622e6007bf5f2d1f0713c56daf8451e239b843d00389b6235b6b"
+
+    if [ "$(uname -m)" != "x86_64" ]; then
+        echo "ERROR: Only x86-64 is currently supported." >&2
+        exit 1
+    fi
+
+    if [ ! -f "$ARCHIVE" ]; then
+        echo "ERROR: Cursor archive not found: $ARCHIVE" >&2
+        exit 1
+    fi
+
+    # Install dependencies
+    sudo apt install -y \
+        curl \
+        ca-certificates \
+        python3 \
+        python3-pil \
+        unzip \
+        libxcursor1 \
+        libfuse2t64
+
+    # Create isolated temporary build environment
+    WORKDIR=$(mktemp -d)
+    trap 'rm -rf -- "$WORKDIR"' EXIT
+
+    cd "$WORKDIR"
+
+    # Download pinned ani2xcursor AppImage
+    ASSET="ani2xcursor-v${VERSION}-linux-x86_64.AppImage"
+    URL="https://github.com/yuzujr/ani2xcursor/releases/download/v${VERSION}/${ASSET}"
+
+    curl --fail --location --retry 3 \
+        "$URL" \
+        --output ani2xcursor.AppImage
+
+    # Verify downloaded artifact
+    printf '%s  %s\n' "$SHA256" ani2xcursor.AppImage \
+        | sha256sum --check -
+
+    chmod 0755 ani2xcursor.AppImage
+
+    CONVERTER="$WORKDIR/ani2xcursor.AppImage"
+
+    "$CONVERTER" --version
+
+    # Extract user-provided Microsoft cursor artwork
+    mkdir -p microsoft input output themes
+
+    unzip -q "$ARCHIVE" -d microsoft
+
+    # Prepare both Microsoft cursor schemes
+    python3 - "$SIZES" <<'PY'
+from pathlib import Path
+import shutil
+import sys
+import json
+
+sizes = sys.argv[1]
+
+schemes = {
+    "Windows-Aero-Light": {
+        "pointer":     "aero_arrow.cur",
+        "help":        "aero_helpsel.cur",
+        "working":     "aero_working.ani",
+        "busy":        "aero_busy.ani",
+        "precision":   "cross_r.cur",
+        "text":        "beam_r.cur",
+        "hand":        "aero_pen.cur",
+        "unavailable": "aero_unavail.cur",
+        "vert":        "aero_ns.cur",
+        "horz":        "aero_ew.cur",
+        "dgn1":        "aero_nwse.cur",
+        "dgn2":        "aero_nesw.cur",
+        "move":        "aero_move.cur",
+        "alternate":   "aero_up.cur",
+        "link":        "aero_link.cur",
+        "person":      "aero_person.cur",
+        "pin":         "aero_pin.cur",
+    },
+    "Windows-Black": {
+        "pointer":     "arrow_r.cur",
+        "help":        "help_r.cur",
+        "working":     "wait_r.cur",
+        "busy":        "busy_r.cur",
+        "precision":   "cross_r.cur",
+        "text":        "beam_r.cur",
+        "hand":        "pen_r.cur",
+        "unavailable": "no_r.cur",
+        "vert":        "size4_r.cur",
+        "horz":        "size3_r.cur",
+        "dgn1":        "size2_r.cur",
+        "dgn2":        "size1_r.cur",
+        "move":        "move_r.cur",
+        "alternate":   "up_r.cur",
+        "link":        "aero_link.cur",
+        "person":      "person_r.cur",
+        "pin":         "pin_r.cur",
+    },
+}
+
+source = {
+    p.name.lower(): p
+    for p in Path("microsoft").rglob("*")
+    if p.is_file()
+}
+
+for theme, roles in schemes.items():
+    root = (Path("input") / theme).resolve()
+
+    manifest_dir = root / "ani2xcursor"
+    manifest_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"\n=== Preparing {theme} ===")
+
+    for role, filename in roles.items():
+        if filename.lower() not in source:
+            raise SystemExit(
+                f"Missing required cursor: {filename}"
+            )
+
+        shutil.copyfile(
+            source[filename.lower()],
+            root / filename
+        )
+
+        print(f"{role}: {filename}")
+
+    # Generate ani2xcursor manifest
+    lines = [
+        "[input]",
+        f'theme = "{theme}"',
+        f"dir = {json.dumps(str(root))}",
+        "",
+        "[files]",
+    ]
+
+    for role, filename in roles.items():
+        lines.append(f'{role} = "{filename}"')
+
+    lines += ["", "[sizes]"]
+
+    for role in roles:
+        lines.append(f'{role} = "{sizes}"')
+
+    manifest = manifest_dir / "manifest.toml"
+    manifest.write_text("\n".join(lines) + "\n")
+
+    print(f"Manifest generated: {theme}")
+PY
+
+    # Convert both cursor schemes independently
+    for THEME in Windows-Aero-Light Windows-Black; do
+
+        echo "=== Converting $THEME ==="
+
+        "$CONVERTER" "$WORKDIR/input/$THEME" \
+            --out "$WORKDIR/output" \
+            --resample bilinear
+
+        # Locate ani2xcursor's nested output directory
+        GENERATED="$WORKDIR/output/$THEME/xcursor"
+
+        if [ ! -f "$GENERATED/index.theme" ] || \
+           [ ! -d "$GENERATED/cursors" ]; then
+
+            echo "ERROR: Generated theme not found: $THEME" >&2
+            find "$WORKDIR/output" -maxdepth 4 -type d
+            exit 1
+        fi
+
+        # Stage theme using its final directory layout
+        cp -a "$GENERATED" "$WORKDIR/themes/$THEME"
+
+        test -f "$WORKDIR/themes/$THEME/cursors/left_ptr"
+
+    done
+
+    # Complete Linux cursor aliases and validate generated themes
+    python3 - "$SIZES" <<'PY'
+from pathlib import Path
+from collections import Counter
+import struct
+import sys
+
+sizes = set(map(int, sys.argv[1].split(",")))
+
+themes = [
+    "Windows-Aero-Light",
+    "Windows-Black",
+]
+
+# Supplement aliases already supplied by ani2xcursor
+aliases = {
+    "left_ptr": [
+        "default",
+        "arrow",
+        "top_left_arrow",
+    ],
+    "help": [
+        "question_arrow",
+        "whats_this",
+    ],
+    "left_ptr_watch": [
+        "progress",
+        "half-busy",
+        "08e8e1c95fe2fc01f976f1e063a24ccd",
+        "3ecb610c1bf2410f44200f48c40d3599",
+    ],
+    "watch": [
+        "wait",
+        "clock",
+    ],
+    "crosshair": [
+        "cross",
+        "tcross",
+        "precision",
+    ],
+    "xterm": [
+        "text",
+        "ibeam",
+    ],
+    "pencil": [
+        "handwriting",
+    ],
+    "not-allowed": [
+        "forbidden",
+        "no-drop",
+        "crossed_circle",
+        "dnd-none",
+        "03b6e0fcb3499374a867c041f52298f0",
+    ],
+    "sb_v_double_arrow": [
+        "ns-resize",
+        "size_ver",
+        "n-resize",
+        "s-resize",
+        "top_side",
+        "bottom_side",
+        "row-resize",
+        "00008160000006810000408080010102",
+        "2870a09082c103050810ffdffffe0204",
+    ],
+    "sb_h_double_arrow": [
+        "ew-resize",
+        "size_hor",
+        "e-resize",
+        "w-resize",
+        "left_side",
+        "right_side",
+        "col-resize",
+        "028006030e0e7ebffc7f7070c0600140",
+        "14fef782d02440884392942c11205230",
+    ],
+    "bd_double_arrow": [
+        "nwse-resize",
+        "size_fdiag",
+        "nw-resize",
+        "se-resize",
+        "top_left_corner",
+        "bottom_right_corner",
+    ],
+    "fd_double_arrow": [
+        "nesw-resize",
+        "size_bdiag",
+        "ne-resize",
+        "sw-resize",
+        "top_right_corner",
+        "bottom_left_corner",
+    ],
+    "fleur": [
+        "move",
+        "size_all",
+        "all-scroll",
+        "4498f0e0c1937ffe01fd06f973665830",
+    ],
+    "center_ptr": [
+        "up-arrow",
+        "up_arrow",
+    ],
+    "hand2": [
+        "pointer",
+        "hand",
+        "hand1",
+        "pointing_hand",
+        "9d800788f1b08800ae810202380a0822",
+        "e29285e634086352946a0e7090d73106",
+    ],
+}
+
+# XCursor image chunk identifier
+IMAGE_TYPE = 0xfffd0002
+
+
+def verify_cursor(path):
+    data = path.read_bytes()
+
+    if len(data) < 16 or data[:4] != b"Xcur":
+        raise ValueError(f"Invalid XCursor file: {path}")
+
+    header, version, ntoc = struct.unpack_from(
+        "<III", data, 4
+    )
+
+    if header < 16 or header + 12 * ntoc > len(data):
+        raise ValueError(f"Invalid XCursor header: {path}")
+
+    frames = Counter()
+
+    for i in range(ntoc):
+        kind, subtype, offset = struct.unpack_from(
+            "<III", data, header + 12 * i
+        )
+
+        if kind != IMAGE_TYPE:
+            continue
+
+        if offset + 36 > len(data):
+            raise ValueError(f"Truncated chunk: {path}")
+
+        (
+            chunk_header,
+            chunk_type,
+            nominal_size,
+            chunk_version,
+            width,
+            height,
+            xhot,
+            yhot,
+            delay,
+        ) = struct.unpack_from("<9I", data, offset)
+
+        if chunk_type != IMAGE_TYPE:
+            raise ValueError(f"Invalid image chunk: {path}")
+
+        if nominal_size != subtype:
+            raise ValueError(f"Invalid nominal size: {path}")
+
+        if not width or not height:
+            raise ValueError(f"Invalid dimensions: {path}")
+
+        if xhot >= width or yhot >= height:
+            raise ValueError(f"Invalid hotspot: {path}")
+
+        if chunk_header < 36:
+            raise ValueError(f"Invalid chunk header: {path}")
+
+        start = offset + chunk_header
+        end = start + width * height * 4
+
+        if end > len(data):
+            raise ValueError(f"Truncated image: {path}")
+
+        frames[nominal_size] += 1
+
+    missing = sizes - set(frames)
+
+    if missing:
+        raise ValueError(
+            f"{path.name}: missing sizes {sorted(missing)}"
+        )
+
+    return frames
+
+
+for name in themes:
+    theme = Path("themes") / name
+    cursors = theme / "cursors"
+
+    print(f"\n=== Verifying {name} ===")
+
+    added = 0
+
+    # Add supplementary cursor aliases
+    for canonical, names in aliases.items():
+        source = cursors / canonical
+
+        if not source.is_file():
+            raise ValueError(
+                f"{name}: missing cursor {canonical}"
+            )
+
+        for alias in names:
+            target = cursors / alias
+
+            if target.is_file():
+                continue
+
+            if target.is_symlink():
+                target.unlink()
+
+            target.symlink_to(canonical)
+            added += 1
+
+    print(f"Added {added} supplementary aliases.")
+
+    # Validate all real cursor files
+    count = 0
+
+    for path in sorted(cursors.iterdir()):
+        if path.is_file() and not path.is_symlink():
+            verify_cursor(path)
+            count += 1
+
+    if not count:
+        raise ValueError(f"No cursor files found: {name}")
+
+    # Aero has animated busy and working indicators.
+    # Windows Black uses static indicators.
+    expected_frames = 18 if name == "Windows-Aero-Light" else 1
+
+    for cursor in ("watch", "left_ptr_watch"):
+        frames = verify_cursor(cursors / cursor)
+
+        for size in sizes:
+            if frames[size] != expected_frames:
+                raise ValueError(
+                    f"{name}/{cursor}: unexpected frame "
+                    f"count at {size}px: {frames[size]}"
+                )
+
+    # Validate symbolic links
+    root = cursors.resolve()
+
+    for path in root.iterdir():
+        if path.is_symlink():
+            if not path.is_file():
+                raise ValueError(
+                    f"Broken cursor alias: {path}"
+                )
+
+            if not path.resolve().is_relative_to(root):
+                raise ValueError(
+                    f"External cursor alias: {path}"
+                )
+
+    # Write final theme metadata
+    (theme / "index.theme").write_text(
+        "[Icon Theme]\n"
+        f"Name={name}\n"
+        "Comment=Original Microsoft Windows cursors\n"
+        "Inherits=Adwaita\n"
+    )
+
+    # Metadata for Debian's x-cursor-theme alternatives
+    (theme / "cursor.theme").write_text(
+        "[Icon Theme]\n"
+        f"Name={name}\n"
+        f"Inherits={name}\n"
+    )
+
+    print(
+        f"Verified: {name} "
+        f"({count} cursor files, {len(sizes)} sizes)"
+    )
+
+print("\nBoth Microsoft cursor themes verified.")
+PY
+
+    # Install both verified themes system-wide
+    sudo mkdir -p "$INSTALL_DIR"
+
+    for THEME in Windows-Aero-Light Windows-Black; do
+
+        sudo rm -rf -- "$INSTALL_DIR/$THEME"
+
+        sudo cp -a \
+            "$WORKDIR/themes/$THEME" \
+            "$INSTALL_DIR/"
+
+        sudo chown -hR root:root \
+            "$INSTALL_DIR/$THEME"
+
+        echo "Installed: $INSTALL_DIR/$THEME"
+    done
+
+    echo "Microsoft Windows cursor installation complete."
+)
+
+# 2. Verify installed Microsoft Windows cursor themes
+# Safe to rerun after generating thumbnails.
+python3 <<'PY'
+import ctypes as C
+from pathlib import Path
+
+class CursorImage(C.Structure):
+    _fields_ = [
+        ("version", C.c_uint32),
+        ("size", C.c_uint32),
+        ("width", C.c_uint32),
+        ("height", C.c_uint32),
+        ("xhot", C.c_uint32),
+        ("yhot", C.c_uint32),
+        ("delay", C.c_uint32),
+        ("pixels", C.POINTER(C.c_uint32)),
+    ]
+
+lib = C.CDLL("libXcursor.so.1")
+
+lib.XcursorLibraryLoadImage.argtypes = [
+    C.c_char_p,
+    C.c_char_p,
+    C.c_int,
+]
+
+lib.XcursorLibraryLoadImage.restype = (
+    C.POINTER(CursorImage)
+)
+
+lib.XcursorImageDestroy.argtypes = [
+    C.POINTER(CursorImage)
+]
+
+lib.XcursorImageDestroy.restype = None
+
+sizes = [
+    24, 30, 32, 36, 40, 42, 48, 54,
+    56, 60, 64, 72, 80, 96, 112, 128,
+]
+
+themes = [
+    "Windows-Aero-Light",
+    "Windows-Black",
+]
+
+failures = 0
+checks = 0
+
+for theme in themes:
+    root = Path("/usr/share/icons") / theme / "cursors"
+
+    if not root.is_dir():
+        raise SystemExit(f"Theme not installed: {theme}")
+
+    for path in sorted(root.iterdir()):
+        # Cinnamon preview artwork is not an XCursor binary.
+        if path.name == "thumbnail.png":
+            continue
+
+        for size in sizes:
+            checks += 1
+
+            ptr = lib.XcursorLibraryLoadImage(
+                path.name.encode(),
+                theme.encode(),
+                size,
+            )
+
+            if not ptr:
+                print(f"FAIL: {theme}/{path.name} @ {size}")
+                failures += 1
+                continue
+
+            img = ptr.contents
+
+            if (
+                img.size != size
+                or img.xhot >= img.width
+                or img.yhot >= img.height
+            ):
+                print(
+                    f"FAIL: {theme}/{path.name} @ {size}"
+                    f" (returned {img.size})"
+                )
+                failures += 1
+
+            lib.XcursorImageDestroy(ptr)
+
+    print(f"Checked: {theme}")
+
+print(f"Total checks: {checks}")
+print(f"Failures: {failures}")
+
+if failures or not checks:
+    raise SystemExit(1)
+PY
+
+
+# 3. Configure desktop cursor defaults
+# These explicit fallbacks may need updating if the cursor theme or size is
+# changed later through the GUI.
+(
+    set -euo pipefail
+
+    CURSOR_THEME="Windows-Aero-Light"
+    CURSOR_SIZE=32
+
+    test -f "/usr/share/icons/$CURSOR_THEME/cursors/left_ptr"
+
+    # Cinnamon desktop preferences
+    gsettings set org.cinnamon.desktop.interface \
+        cursor-theme "$CURSOR_THEME"
+
+    gsettings set org.cinnamon.desktop.interface \
+        cursor-size "$CURSOR_SIZE"
+
+    # GNOME-compatible applications
+    gsettings set org.gnome.desktop.interface \
+        cursor-theme "$CURSOR_THEME"
+
+    gsettings set org.gnome.desktop.interface \
+        cursor-size "$CURSOR_SIZE"
+
+    # User-level cursor fallback
+    for DIR in ~/.icons/default ~/.local/share/icons/default; do
+        mkdir -p "$DIR"
+
+        printf '[Icon Theme]\nInherits=%s\n' \
+            "$CURSOR_THEME" > "$DIR/index.theme"
+    done
+
+    # Preserve unrelated X11 resources
+    python3 - "$CURSOR_THEME" "$CURSOR_SIZE" <<'PY'
+from pathlib import Path
+import sys
+import re
+
+theme, size = sys.argv[1:]
+path = Path.home() / ".Xresources"
+
+lines = path.read_text().splitlines() if path.exists() else []
+
+lines = [
+    line for line in lines
+    if not re.match(
+        r"^\s*Xcursor\.(theme|size)\s*:",
+        line
+    )
+]
+
+lines.extend([
+    f"Xcursor.theme: {theme}",
+    f"Xcursor.size: {size}",
+])
+
+path.write_text("\n".join(lines) + "\n")
+PY
+
+    # Apply X11 cursor resources to current session
+    if [ "${XDG_SESSION_TYPE:-}" = "x11" ]; then
+        xrdb -merge "$HOME/.Xresources"
+    fi
+
+    # Register both cursor themes with Debian's alternatives system
+    for THEME in Windows-Aero-Light Windows-Black; do
+        sudo update-alternatives --install \
+            /usr/share/icons/default/index.theme \
+            x-cursor-theme \
+            "/usr/share/icons/$THEME/cursor.theme" \
+            50
+    done
+
+    # Configure system-wide fallback
+    sudo update-alternatives --set \
+        x-cursor-theme \
+        "/usr/share/icons/$CURSOR_THEME/cursor.theme"
+)
+
+# 4. Generate high-quality, centered cursor theme thumbnails
+# Always regenerate from the 128px cursor, not from an existing thumbnail.
+# This changes previews only, never cursor artwork or hotspots.
+sudo python3 <<'PY'
+import ctypes as C
+from pathlib import Path
+from PIL import Image
+
+CANVAS_SIZE = 32
+ARTWORK_SIZE = 28
+SOURCE_SIZE = 128
+
+class CursorImage(C.Structure):
+    _fields_ = [
+        ("version", C.c_uint32),
+        ("size", C.c_uint32),
+        ("width", C.c_uint32),
+        ("height", C.c_uint32),
+        ("xhot", C.c_uint32),
+        ("yhot", C.c_uint32),
+        ("delay", C.c_uint32),
+        ("pixels", C.POINTER(C.c_uint32)),
+    ]
+
+lib = C.CDLL("libXcursor.so.1")
+
+lib.XcursorFilenameLoadImage.argtypes = [
+    C.c_char_p, C.c_int
+]
+lib.XcursorFilenameLoadImage.restype = C.POINTER(CursorImage)
+
+lib.XcursorImageDestroy.argtypes = [
+    C.POINTER(CursorImage)
+]
+lib.XcursorImageDestroy.restype = None
+
+for theme in ("Windows-Aero-Light", "Windows-Black"):
+    root = Path("/usr/share/icons") / theme / "cursors"
+
+    # Load high-resolution original artwork
+    ptr = lib.XcursorFilenameLoadImage(
+        str(root / "left_ptr").encode(),
+        SOURCE_SIZE
+    )
+
+    if not ptr:
+        raise RuntimeError(f"Cannot load cursor: {theme}")
+
+    try:
+        img = ptr.contents
+        pixels = []
+
+        # Convert premultiplied ARGB to straight RGBA
+        for i in range(img.width * img.height):
+            p = img.pixels[i]
+
+            a = (p >> 24) & 255
+            r = (p >> 16) & 255
+            g = (p >> 8) & 255
+            b = p & 255
+
+            if a:
+                r = min(255, round(r * 255 / a))
+                g = min(255, round(g * 255 / a))
+                b = min(255, round(b * 255 / a))
+            else:
+                r = g = b = 0
+
+            pixels.append((r, g, b, a))
+
+        artwork = Image.new(
+            "RGBA", (img.width, img.height)
+        )
+        artwork.putdata(pixels)
+
+    finally:
+        lib.XcursorImageDestroy(ptr)
+
+    # Remove transparent padding
+    bounds = artwork.getchannel("A").getbbox()
+
+    if bounds is None:
+        raise ValueError(f"Empty cursor: {theme}")
+
+    artwork = artwork.crop(bounds)
+
+    # High-quality proportional downsampling
+    artwork.thumbnail(
+        (ARTWORK_SIZE, ARTWORK_SIZE),
+        Image.Resampling.LANCZOS
+    )
+
+    # Center on transparent canvas
+    canvas = Image.new(
+        "RGBA",
+        (CANVAS_SIZE, CANVAS_SIZE),
+        (0, 0, 0, 0)
+    )
+
+    x = (CANVAS_SIZE - artwork.width) // 2
+    y = (CANVAS_SIZE - artwork.height) // 2
+
+    canvas.alpha_composite(artwork, (x, y))
+
+    output = root / "thumbnail.png"
+    canvas.save(output)
+    output.chmod(0o644)
+
+    print(f"Generated: {output}")
+PY
+
+# Close and reopen Cinnamon Themes to refresh the previews.
+# Log out and back in to reload cursor preferences throughout the session.
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# =============================================================================
+# Configure final LightDM GTK Greeter appearance
+# =============================================================================
+# Run after installing Papirus icons and the Windows Aero cursor themes.
+#
+# The greeter intentionally uses Adwaita and Papirus rather than Mint-Y.
+# Mint-Y's styling was tested but produced an undesirable two-tone login box.
+#
+# Retain Debian's default user-independent login wallpaper.
+# Match the desktop's cursor theme and size.
+# Preserve our custom clock format and login screen layout.
+# =============================================================================
+
+(
+    set -Eeuo pipefail
+
+    # Verify required appearance assets are installed
+    test -f /usr/share/icons/Papirus/index.theme
+    test -f /usr/share/icons/Windows-Aero-Light/cursors/left_ptr
+
+    # Configure final GTK Greeter appearance
+    sudo tee /etc/lightdm/lightdm-gtk-greeter.conf \
+        > /dev/null <<'EOF'
+[greeter]
+user-background=false
+theme-name=Adwaita
+icon-theme-name=Papirus
+cursor-theme-name=Windows-Aero-Light
+cursor-theme-size=32
+default-user-image=#avatar-default
+font-name=Sans 12
+xft-dpi=96
+xft-antialias=true
+xft-hintstyle=hintslight
+xft-rgba=rgb
+position=50%,center 50%,center
+panel-position=top
+indicators=~host;~spacer;~session;~clock;~power
+clock-format=%a, %-m/%-d/%Y %-I:%M %p
+EOF
+
+    echo "LightDM GTK Greeter configuration complete."
+
+    cat /etc/lightdm/lightdm-gtk-greeter.conf
+)
+
+# Changes take effect on the next logout or reboot.
+# Do not forcibly restart LightDM from an active desktop session.
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Install graphical software management and AppImage support
+sudo apt install -y \
+    gnome-software \
+    gnome-software-plugin-flatpak \
+    flatpak \
+    libfuse2t64 \
+    curl \
+    ca-certificates
+
+# Configure Flathub system-wide
+sudo flatpak remote-add --system --if-not-exists \
+    flathub https://flathub.org/repo/flathub.flatpakrepo
+
+# Install Gear Lever for AppImage lifecycle management
+sudo flatpak install --system -y \
+    flathub it.mijorus.gearlever
+
+# Configure GNOME Software update preferences
+# Check for updates and notify, but do not install automatically
+gsettings set org.gnome.software allow-updates true
+gsettings set org.gnome.software download-updates false
+gsettings set org.gnome.software download-updates-notify true
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Enable Gear Lever's native background update preference
+# Equivalent to enabling "Check updates on system startup" in the GUI.
+# Run as the desktop user, not root.
+
+flatpak run --command=python3 it.mijorus.gearlever - <<'PY'
+import configparser
+import uuid
+from pathlib import Path
+from gi.repository import Gio, GLib
+
+APP_ID = "it.mijorus.gearlever"
+KEY = "fetch-updates-in-background"
+
+# Request native autostart through the XDG Background Portal.
+# Running inside the Flatpak associates the request with Gear Lever.
+
+bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+loop = GLib.MainLoop()
+result = {}
+
+token = "gearlever_" + uuid.uuid4().hex
+
+sender = bus.get_unique_name()[1:].replace(".", "_")
+
+request_path = (
+    "/org/freedesktop/portal/desktop/request/"
+    + sender + "/" + token
+)
+
+def on_response(connection, sender_name, object_path,
+                interface_name, signal_name, parameters,
+                user_data):
+
+    code, values = parameters.unpack()
+
+    result["code"] = code
+    result["values"] = values
+
+    loop.quit()
+
+subscription = bus.signal_subscribe(
+    "org.freedesktop.portal.Desktop",
+    "org.freedesktop.portal.Request",
+    "Response",
+    request_path,
+    None,
+    Gio.DBusSignalFlags.NONE,
+    on_response,
+    None,
+)
+
+options = {
+    "handle_token": GLib.Variant("s", token),
+    "reason": GLib.Variant(
+        "s", "Gear Lever background updates fetch"
+    ),
+    "autostart": GLib.Variant("b", True),
+    "background": GLib.Variant("b", True),
+    "commandline": GLib.Variant(
+        "as", ["gearlever", "--fetch-updates"]
+    ),
+}
+
+handle = bus.call_sync(
+    "org.freedesktop.portal.Desktop",
+    "/org/freedesktop/portal/desktop",
+    "org.freedesktop.portal.Background",
+    "RequestBackground",
+    GLib.Variant("(sa{sv})", ("", options)),
+    GLib.VariantType.new("(o)"),
+    Gio.DBusCallFlags.NONE,
+    -1,
+    None,
+).unpack()[0]
+
+if handle != request_path:
+    raise RuntimeError(f"Unexpected portal request path: {handle}")
+
+def on_timeout():
+    loop.quit()
+    return False
+
+timeout = GLib.timeout_add_seconds(120, on_timeout)
+
+loop.run()
+
+bus.signal_unsubscribe(subscription)
+
+if not result:
+    raise RuntimeError("Background portal request timed out")
+
+GLib.source_remove(timeout)
+
+if (
+    result["code"] != 0
+    or not result["values"].get("background", False)
+    or not result["values"].get("autostart", False)
+):
+    raise RuntimeError(
+        f"Background autostart was not granted: {result}"
+    )
+
+# Update Gear Lever's internal configuration,
+# preserving existing application and update-source settings.
+
+path = Path(GLib.get_user_config_dir()) / "gearlever.conf"
+path.parent.mkdir(parents=True, exist_ok=True)
+
+config = configparser.ConfigParser(interpolation=None)
+config.read(path)
+
+config[config.default_section][KEY] = "yes"
+
+with path.open("w") as file:
+    config.write(file)
+
+# Synchronize the actual GUI preference.
+
+settings = Gio.Settings.new(APP_ID)
+
+if not settings.set_boolean(KEY, True):
+    raise RuntimeError("Unable to save Gear Lever preference")
+
+Gio.Settings.sync()
+
+print("Gear Lever background update checking enabled.")
+print(f"Configuration: {path}")
+print(f"Preference: {settings.get_boolean(KEY)}")
+PY
+
+
+
+
+echo "=== GEAR LEVER PREFERENCE ==="
+
+flatpak run --command=gsettings it.mijorus.gearlever \
+    get it.mijorus.gearlever fetch-updates-in-background
+
+echo "=== GEAR LEVER CONFIGURATION ==="
+
+grep '^fetch-updates-in-background' \
+    ~/.var/app/it.mijorus.gearlever/config/gearlever.conf
+
+echo "=== GEAR LEVER AUTOSTART ==="
+
+find ~/.config/autostart -iname '*gearlever*' \
+    -print -exec cat {} \;
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Install Notepadqq as a managed AppImage
+(
+    set -Eeuo pipefail
+
+    VERSION="2.1.1"
+    ASSET="notepadqq-v${VERSION}-linux-x86_64.AppImage"
+    URL="https://github.com/notepadqq/notepadqq/releases/download/v${VERSION}/${ASSET}"
+    SHA256="8ecdd64f2033d3a81f0e628da7fc786878b7ed9302b4c73b4d0236127896b200"
+
+    # Gear Lever CLI
+    gearlever() {
+        flatpak run it.mijorus.gearlever "$@"
+    }
+
+    # Discover an existing managed Notepadqq installation
+    find_notepadqq() {
+        gearlever --list-installed --json | python3 -c '
+import json
+import sys
+
+for app in json.load(sys.stdin)["installed"]:
+    if app["name"].casefold() == "notepadqq":
+        print(app["path"])
+        break
+'
+    }
+
+    APP_PATH=$(find_notepadqq)
+
+    # Install only if not already managed by Gear Lever
+    if [ -z "$APP_PATH" ]; then
+
+        WORKDIR=$(mktemp -d)
+        trap 'rm -rf -- "$WORKDIR"' EXIT
+
+        # Download official Notepadqq release
+        curl --fail --location --retry 3 \
+            "$URL" -o "$WORKDIR/$ASSET"
+
+        # Verify release checksum
+        printf '%s  %s\n' "$SHA256" "$WORKDIR/$ASSET" \
+            | sha256sum --check -
+
+        chmod 0755 "$WORKDIR/$ASSET"
+
+        # Integrate AppImage and create desktop menu entry
+        gearlever --integrate "$WORKDIR/$ASSET"
+
+        # Locate the newly integrated AppImage
+        APP_PATH=$(find_notepadqq)
+
+    else
+        echo "Notepadqq is already managed by Gear Lever."
+    fi
+
+    test -n "$APP_PATH"
+    test -f "$APP_PATH"
+
+    # Configure GitHub as the application update source
+    gearlever --set-update-source "$APP_PATH" \
+        --manager GithubUpdater \
+        repo=notepadqq/notepadqq \
+        'repo_filename=notepadqq-v*-linux-x86_64.AppImage' \
+        allow_prereleases=0
+
+    # Display installed applications
+    gearlever --list-installed
+
+    # Check for available updates without installing them
+    gearlever --list-updates
+
+    echo "Notepadqq installation complete."
+)
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Install official 1Password desktop application and CLI
+(
+    set -Eeuo pipefail
+
+    # Verify supported architecture
+    if [ "$(dpkg --print-architecture)" != "amd64" ]; then
+        echo "ERROR: This installation requires amd64." >&2
+        exit 1
+    fi
+
+    # Install prerequisites
+    sudo apt install -y \
+        curl \
+        ca-certificates \
+        gnupg \
+        debsig-verify
+
+    # Create temporary working directory
+    WORKDIR=$(mktemp -d)
+    trap 'rm -rf -- "$WORKDIR"' EXIT
+
+    BASE_URL="https://downloads.1password.com/linux"
+    FINGERPRINT="3FEF9748469ADBE15DA7CA80AC2D62742012EA22"
+    KEY_ID="AC2D62742012EA22"
+
+    # Download official repository signing key
+    curl --fail --location --retry 3 \
+        "$BASE_URL/keys/1password.asc" \
+        -o "$WORKDIR/1password.asc"
+
+    # Verify signing key fingerprint
+    ACTUAL_FINGERPRINT=$(
+        gpg --batch --show-keys --with-colons \
+            "$WORKDIR/1password.asc" \
+            | awk -F: '$1 == "fpr" && !seen++ {print $10}'
+    )
+
+    if [ "$ACTUAL_FINGERPRINT" != "$FINGERPRINT" ]; then
+        echo "ERROR: Unexpected 1Password signing key." >&2
+        exit 1
+    fi
+
+    # Convert signing key to binary keyring format
+    gpg --batch --yes --dearmor \
+        --output "$WORKDIR/1password.gpg" \
+        "$WORKDIR/1password.asc"
+
+    # Install repository signing key
+    sudo install -d -m 0755 /usr/share/keyrings
+
+    sudo install -m 0644 \
+        "$WORKDIR/1password.gpg" \
+        /usr/share/keyrings/1password-archive-keyring.gpg
+
+    # Configure official stable APT repository
+    sudo tee /etc/apt/sources.list.d/1password.list \
+        > /dev/null <<'EOF'
+deb [arch=amd64 signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/amd64 stable main
+EOF
+
+    # Download official package signature verification policy
+    curl --fail --location --retry 3 \
+        "$BASE_URL/debian/debsig/1password.pol" \
+        -o "$WORKDIR/1password.pol"
+
+    # Install debsig verification policy
+    sudo install -d -m 0755 \
+        "/etc/debsig/policies/$KEY_ID"
+
+    sudo install -m 0644 \
+        "$WORKDIR/1password.pol" \
+        "/etc/debsig/policies/$KEY_ID/1password.pol"
+
+    # Install debsig verification keyring
+    sudo install -d -m 0755 \
+        "/usr/share/debsig/keyrings/$KEY_ID"
+
+    sudo install -m 0644 \
+        "$WORKDIR/1password.gpg" \
+        "/usr/share/debsig/keyrings/$KEY_ID/debsig.gpg"
+
+    # Update package indexes and install both applications
+    sudo apt update
+
+    sudo apt install -y \
+        1password \
+        1password-cli
+
+    echo "1Password installation complete."
+)
+
+# Verify installed 1Password packages
+dpkg-query -W 1password 1password-cli
+
+# Verify package repository and update candidates
+apt-cache policy 1password 1password-cli
+
+# Verify CLI executable
+command -v op
+op --version
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Install Microsoft TrueType Core Fonts for web compatibility
+(
+    set -Eeuo pipefail
+
+    # Enable Debian contrib if the package is not already available
+    if ! apt-cache show ttf-mscorefonts-installer >/dev/null 2>&1; then
+
+        sudo tee /etc/apt/sources.list.d/debian-contrib.sources \
+            > /dev/null <<'EOF'
+Types: deb
+URIs: https://deb.debian.org/debian
+Suites: trixie trixie-updates
+Components: contrib
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+EOF
+
+        sudo apt update
+    fi
+
+    # Install Microsoft Core Fonts and font management utilities
+    sudo apt install -y \
+        ttf-mscorefonts-installer \
+        fontconfig
+
+    # Refresh system font caches
+    sudo fc-cache -f
+)
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Install supplemental user-provided fonts
+(
+    set -Eeuo pipefail
+
+    ARCHIVE="$HOME/Downloads/Windows-Fonts.zip"
+    INSTALL_DIR="/usr/local/share/fonts/windows-supplemental"
+
+    test -f "$ARCHIVE"
+
+    sudo apt install -y fontconfig python3 unzip
+
+    WORKDIR=$(mktemp -d)
+    trap 'rm -rf -- "$WORKDIR"' EXIT
+
+    mkdir -p "$WORKDIR/source" "$WORKDIR/fonts"
+
+    unzip -q "$ARCHIVE" -d "$WORKDIR/source"
+
+    # Select supplemental fonts by actual font family metadata.
+    # Exclude classic web fonts already provided by the Debian package.
+    python3 - "$WORKDIR" <<'PY'
+from pathlib import Path
+import subprocess
+import shutil
+import sys
+
+root = Path(sys.argv[1])
+
+families = (
+    "Segoe UI",
+    "Tahoma",
+    "Calibri",
+    "Cambria",
+    "Candara",
+    "Consolas",
+    "Constantia",
+    "Corbel",
+    "Aptos",
+    "Cascadia Code",
+    "Cascadia Mono",
+    "Lucida Console",
+    "Palatino Linotype",
+    "Franklin Gothic Medium",
+    "Bahnschrift",
+    "Microsoft Sans Serif",
+)
+
+# Do not replace Debian's existing emoji and symbol fonts.
+excluded = (
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Segoe UI Historic",
+    "Segoe UI Assets",
+    "Segoe UI MDL2 Assets",
+)
+
+def matches(name, prefix):
+    name = name.casefold()
+    prefix = prefix.casefold()
+    return name == prefix or name.startswith(prefix + " ")
+
+count = 0
+
+for path in sorted((root / "source").rglob("*")):
+
+    if not path.is_file():
+        continue
+
+    if path.suffix.lower() not in (".ttf", ".otf", ".ttc", ".otc"):
+        continue
+
+    result = subprocess.run(
+        ["fc-scan", "--format", "%{family}\n", str(path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+        print(f"Skipping invalid font: {path.name}")
+        continue
+
+    names = {
+        name.strip()
+        for line in result.stdout.splitlines()
+        for name in line.split(",")
+        if name.strip()
+    }
+
+    if any(matches(name, item)
+           for name in names for item in excluded):
+        continue
+
+    if not any(matches(name, item)
+               for name in names for item in families):
+        continue
+
+    target = root / "fonts" / path.name
+
+    if target.exists():
+        if target.read_bytes() != path.read_bytes():
+            raise RuntimeError(f"Conflicting font: {path.name}")
+        continue
+
+    shutil.copyfile(path, target)
+
+    print(f"Selected: {path.name} â€” {', '.join(sorted(names))}")
+    count += 1
+
+if not count:
+    raise SystemExit("No eligible supplemental fonts found.")
+
+print(f"Selected {count} supplemental font files.")
+PY
+
+    # Install system-wide without modifying APT-managed fonts
+    sudo install -d -m 0755 "$INSTALL_DIR"
+
+    find "$WORKDIR/fonts" -maxdepth 1 -type f -print0 |
+        while IFS= read -r -d '' FONT; do
+            sudo install -m 0644 "$FONT" "$INSTALL_DIR/"
+        done
+
+    # Refresh fontconfig caches
+    sudo fc-cache -f
+
+    echo "Supplemental font installation complete."
+)
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Windows-compatible keyboard shortcuts
+(
+    set -euo pipefail
+
+    sudo apt install -y gnome-system-monitor
+
+    SCHEMA="org.cinnamon.desktop.keybindings"
+
+    # Win+L: Lock computer
+    gsettings set "$SCHEMA" looking-glass-keybinding "[]"
+
+    gsettings set "$SCHEMA.media-keys" screensaver \
+        "['<Super>l', '<Control><Alt>l', 'XF86ScreenSaver']"
+
+    # Ctrl+Shift+Esc: Open System Monitor
+    python3 <<'PY'
+import ast
+import subprocess
+
+schema = "org.cinnamon.desktop.keybindings"
+
+def get(schema, key):
+    value = subprocess.check_output(
+        ["gsettings", "get", schema, key], text=True
+    ).strip()
+    if value.startswith("@as "):
+        value = value[4:]
+    return ast.literal_eval(value)
+
+def set_value(schema, key, value):
+    subprocess.run(
+        ["gsettings", "set", schema, key, repr(value)],
+        check=True
+    )
+
+def custom_schema(identifier):
+    return (
+        f"{schema}.custom-keybinding:"
+        f"/org/cinnamon/desktop/keybindings/"
+        f"custom-keybindings/{identifier}/"
+    )
+
+identifiers = get(schema, "custom-list")
+
+# Reuse an existing System Monitor shortcut
+identifier = next(
+    (
+        item for item in identifiers
+        if item != "__dummy__"
+        and get(custom_schema(item), "command") == "gnome-system-monitor"
+    ),
+    None
+)
+
+# Otherwise allocate the next available identifier
+if identifier is None:
+    index = 0
+    while f"custom{index}" in identifiers:
+        index += 1
+    identifier = f"custom{index}"
+
+shortcut = custom_schema(identifier)
+
+set_value(shortcut, "name", "System Monitor")
+set_value(shortcut, "command", "gnome-system-monitor")
+set_value(shortcut, "binding", ["<Primary><Shift>Escape"])
+
+if identifier not in identifiers:
+    identifiers.append(identifier)
+
+# Force Cinnamon to refresh its custom shortcuts
+identifiers = [i for i in identifiers if i != "__dummy__"]
+set_value(schema, "custom-list", identifiers + ["__dummy__"])
+set_value(schema, "custom-list", identifiers)
+
+print("System Monitor shortcut configured:", identifier)
+PY
+)
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Windows-style taskbar buttons
+gdbus call --session \
+    --dest org.Cinnamon \
+    --object-path /org/Cinnamon \
+    --method org.Cinnamon.Eval \
+    'const applets = imports.ui.appletManager.getRunningInstancesForUuid("grouped-window-list@cinnamon.org"); applets.forEach(a => { a.settings.setValue("group-apps", false); a.settings.setValue("title-display", 3); }); JSON.stringify(applets.map(a => ({groupApps: a.settings.getValue("group-apps"), titleDisplay: a.settings.getValue("title-display")})));'
+
+# Restart Cinnamon to apply panel configuration (X11)
+gdbus call --session \
+    --dest org.Cinnamon \
+    --object-path /org/Cinnamon \
+    --method org.Cinnamon.Eval \
+    'global.reexec_self()'
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Show mounted volumes on the desktop
+gsettings set org.nemo.desktop volumes-visible true
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+# Consistent desktop icon spacing and margins
+wget -qO- https://raw.githubusercontent.com/bobapplemac/nemo-grid-compensator/main/install.sh | bash
+
+-----------------------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,6 @@
+[Unit]
+Description=Audit Debian and Mint package candidates
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/debian-workstation/scripts/repositories/policy.py audit

@@ -1,0 +1,5 @@
+Types: deb
+URIs: https://fastly.linuxmint.io/
+Suites: gigi
+Components: main upstream backport
+Signed-By: /etc/apt/keyrings/debian-workstation-mint.gpg

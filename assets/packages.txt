@@ -1,0 +1,26 @@
+# Keep task-cinnamon-desktop's tested recommendations, with explicit exclusions.
+task-cinnamon-desktop
+firefox-esr
+lightdm
+lightdm-gtk-greeter
+papirus-icon-theme
+network-manager
+gnome-terminal
+gnome-system-monitor
+gnome-software
+gnome-software-plugin-flatpak
+flatpak
+libfuse2t64
+python3
+python3-apt
+python3-gi
+python3-pil
+gir1.2-gtk-3.0
+gvfs
+dbus-user-session
+x11-utils
+x11-xserver-utils
+fontconfig
+libxcursor1
+libnotify-bin
+zenity

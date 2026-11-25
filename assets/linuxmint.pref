@@ -1,0 +1,12 @@
+# Security fallback must precede the Mint allowlist. Never hold patched libraries.
+Package: libadwaita-1-0 gir1.2-adw-1 libadwaita-1-dev libadwaita-1-doc libadwaita-1-examples
+Pin: release o=Debian,n=trixie-security
+Pin-Priority: 1001
+
+Package: mint-themes mint-x-icons mint-y-icons mint-cursor-themes libadwaita-1-0 gir1.2-adw-1 libadwaita-1-dev libadwaita-1-doc libadwaita-1-examples xdg-desktop-portal-xapp xapp-symbolic-icons
+Pin: origin "fastly.linuxmint.io"
+Pin-Priority: 500
+
+Package: *
+Pin: origin "fastly.linuxmint.io"
+Pin-Priority: -1

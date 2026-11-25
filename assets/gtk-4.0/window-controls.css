@@ -1,0 +1,98 @@
+/*
+ * Andrew's Universal Window Decorations
+ * GTK4 / libadwaita
+ */
+
+/* Window geometry */
+
+window.csd:not(.maximized):not(.fullscreen):not(.tiled) {
+    border-radius: 6px 6px 0 0;
+}
+
+window.csd:not(.maximized):not(.fullscreen):not(.tiled) .titlebar {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+window.csd.maximized,
+window.csd.fullscreen,
+window.csd.tiled {
+    border-radius: 0;
+}
+
+/* Contiguous window controls */
+
+windowcontrols {
+    border-spacing: 0;
+}
+
+/* Outer button geometry */
+
+windowcontrols > button {
+    border-radius: 0;
+    border-width: 0;
+    box-shadow: none;
+    background-image: none;
+    background-color: transparent;
+    min-width: 46px;
+    min-height: 32px;
+    margin: 0;
+    padding: 0;
+    color: inherit;
+}
+
+/* Remove libadwaita's inner circular backgrounds */
+
+windowcontrols > button > image,
+windowcontrols > button:hover > image,
+windowcontrols > button:active > image,
+windowcontrols > button:backdrop > image {
+    background: none;
+    border-radius: 0;
+    border-width: 0;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+}
+
+/* Inactive windows */
+
+windowcontrols > button:backdrop {
+    opacity: 0.65;
+    background-color: transparent;
+}
+
+/* Minimize/maximize hover */
+
+windowcontrols > button.minimize:hover,
+windowcontrols > button.maximize:hover,
+windowcontrols > button.restore:hover {
+    opacity: 1;
+    background-color: alpha(currentColor, 0.10);
+}
+
+/* Minimize/maximize pressed */
+
+windowcontrols > button.minimize:active,
+windowcontrols > button.maximize:active,
+windowcontrols > button.restore:active {
+    opacity: 1;
+    background-color: alpha(currentColor, 0.18);
+}
+
+/* Close hover */
+
+windowcontrols > button.close:hover {
+    opacity: 1;
+    background-color: #e81123;
+    color: #ffffff;
+}
+
+/* Close pressed */
+
+windowcontrols > button.close:active {
+    opacity: 1;
+    background-color: #c50f1f;
+    color: #ffffff;
+}

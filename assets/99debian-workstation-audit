@@ -1,0 +1,1 @@
+APT::Update::Post-Invoke-Success { "/usr/bin/python3 /usr/local/lib/debian-workstation/scripts/repositories/policy.py audit"; };

@@ -1,0 +1,13 @@
+.research/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+config.local.conf
+*.zip
+*.AppImage
+*.deb
+*.tar.gz
+test-results/
+Windows-Aero-Light/
+Windows-Black/
+*.log

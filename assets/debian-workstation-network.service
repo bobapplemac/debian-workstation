@@ -1,0 +1,15 @@
+[Unit]
+Description=Commit validated workstation network migration before network startup
+DefaultDependencies=no
+After=local-fs.target
+Before=network-pre.target networking.service NetworkManager.service
+Wants=network-pre.target
+ConditionPathExists=/var/lib/debian-workstation/network/plan.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/debian-workstation/scripts/network/migrate.py commit
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -27,6 +27,10 @@ extracts to a private temporary directory, then invokes that revision's local
 installer. A recursion guard prevents another bootstrap. Fixed source revisions
 are optional; dynamic external APT/Flatpak sources intentionally remain updatable.
 
+Public Markdown documentation and the license are persisted with the implementation,
+including offline network recovery instructions. Historical notes, local configuration,
+proprietary inputs and screenshot binaries are excluded from that snapshot.
+
 `lib/` holds the small runner and shared shell functions. `modules/` contains
 coarse provisioning units. `scripts/` groups cursor, font, desktop, network,
 repository, Notepadqq, Gear Lever and Windows helpers. Shared configuration,

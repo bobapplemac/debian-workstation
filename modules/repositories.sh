@@ -13,6 +13,7 @@ repositories_main() (
             done
             echo 'Repository configuration restored after failed validation.' >&2
         fi
+        if [[ -d $local_work/gnupg ]]; then gpgconf --homedir "$local_work/gnupg" --kill all 2>/dev/null || true; fi
         rm -rf -- "$local_work"
     }
     trap rollback EXIT
@@ -28,7 +29,7 @@ repositories_main() (
     fi
     fingerprint=302F0738F465C1535761F965A6616109451BBBF2
     mkdir -m 0700 "$local_work/gnupg"
-    gpg --homedir "$local_work/gnupg" --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$fingerprint"
+    timeout 120 gpg --homedir "$local_work/gnupg" --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$fingerprint"
     actual=$(gpg --homedir "$local_work/gnupg" --batch --with-colons --fingerprint "$fingerprint" | awk -F: '$1=="fpr" {print $10; exit}')
     [[ $actual == "$fingerprint" ]] || die 'Unexpected Linux Mint signing key'
     gpg --homedir "$local_work/gnupg" --batch --export "$fingerprint" > "$local_work/key.gpg"

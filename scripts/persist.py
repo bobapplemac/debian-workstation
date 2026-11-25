@@ -11,9 +11,12 @@ def main(source,destination):
     if any(p.is_symlink() for p in [destination,*destination.parents]): raise ValueError('Symlink in persistent implementation path')
     destination.mkdir(mode=0o755,parents=True,exist_ok=True)
     paths=[Path('install.sh')]
-    for directory in ('lib','modules','scripts','assets'):
+    for name in ('README.md','LICENSE'):
+        if (source/name).is_file(): paths.append(Path(name))
+    for directory in ('lib','modules','scripts','assets','docs'):
         for path in (source/directory).rglob('*'):
             if '__pycache__' in path.parts or path.name.endswith(('.pyc','.before-debian-workstation')): continue
+            if directory=='docs' and ('history' in path.parts or path.suffix!='.md'): continue
             if path.is_symlink(): raise ValueError(f'Symlink in implementation inputs: {path}')
             if path.is_file(): paths.append(path.relative_to(source))
     for relative in paths:

@@ -262,4 +262,4 @@ if __name__=='__main__':
         elif sys.argv[1]=='commit': commit()
         else: raise ValueError('Use inspect, stage or commit')
     except (ValueError,OSError,subprocess.CalledProcessError,configparser.Error) as e:
-        sys.exit(f'Network migration stopped: {e}. Original backups and console recovery: docs/networking.md')
+        sys.exit(f'Network migration stopped: {e}. Original backups and console recovery: /usr/local/lib/debian-workstation/docs/networking.md')

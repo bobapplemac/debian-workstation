@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Restore normal adduser password and Full Name prompts for newly created accounts.
+- Detect physical graphics adapters and offer native Intel/AMD firmware/Mesa or
+  the authenticated NVIDIA open-module stack, with supported-GPU and Secure Boot checks.
+
 - Own the native graphical-session lifecycle from LightDM around Debian Xsession;
   stop portal backends before X teardown and bind the Mint XApp unit to the session.
 - Verify graphical-session activity and failed system/user units, which were not

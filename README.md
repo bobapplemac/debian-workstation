@@ -37,6 +37,9 @@ bash install.sh
 Run as your regular user: the installer checks sudo access and uses that account.
 Run as root: it asks for a regular workstation username and guides creation of a
 new account and password. An existing regular account can also be selected.
+New accounts use Debian's normal `adduser` questions, including Full Name, which
+provides the login-screen display name. To add/correct it on an existing account,
+run `sudo chfn "$USER"` as that regular user.
 Root can use `--user USER` to select the account explicitly. Passwords are entered
 through the terminal and never stored in project configuration.
 
@@ -79,6 +82,9 @@ or forcibly restarts LightDM or Cinnamon.
   dark GNOME Terminal colors.
 - NetworkManager migration staged at reboot; VMware/KVM/Hyper-V guest integration
   selected automatically where supported.
+- Physical GPU detection and optional native Intel/AMD firmware/Mesa or NVIDIA
+  open kernel modules with matching vendor libraries. See [graphics setup](docs/graphics.md),
+  including the RTX 5060 Ti and Secure Boot prerequisites.
 - GNOME Software, system Flathub and Gear Lever, update checks and notifications
   with manual application update installation.
 - Optional latest stable Notepadqq AppImage, official 1Password desktop/CLI,
@@ -120,9 +126,10 @@ bash /usr/local/lib/debian-workstation/install.sh --phase session \
 
 Configuration is strict `KEY=value` data, with no quoting or shell expansion.
 Options cover account creation, passwordless sudo (off by default), guest type,
+`GRAPHICS_DRIVERS=ask|yes|no` (default ask),
 Notepadqq, 1Password desktop/CLI, Core Fonts, optional archive paths, and
 `NEMO_REF` (default `main`, or an explicit revision). `--module` accepts `base`,
-`network`, `repositories`, `desktop`, `assets`, `applications`, or `all`.
+`network`, `repositories`, `desktop`, `graphics`, `assets`, `applications`, or `all`.
 System modules require their normal prerequisites; rerunning a module is intended
 after an initial full installation. A full rerun preserves managed configuration
 and unrelated customizations; conflicting user edits stop with diagnostics.

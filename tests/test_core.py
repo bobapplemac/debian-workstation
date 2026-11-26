@@ -21,6 +21,8 @@ class ConfigTests(unittest.TestCase):
             with self.subTest(text=text),self.assertRaises(ValueError): config.parse(text)
     def test_defaults_and_spaces(self):
         self.assertEqual(config.parse('')['NEMO_REF'],'main')
+        self.assertEqual(config.parse('')['GRAPHICS_DRIVERS'],'ask')
+        with self.assertRaises(ValueError):config.parse('GRAPHICS_DRIVERS=legacy')
         self.assertEqual(config.parse('FONT_ARCHIVE=/tmp/my fonts.zip')['FONT_ARCHIVE'],'/tmp/my fonts.zip')
 
 class NetworkTests(unittest.TestCase):

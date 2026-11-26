@@ -10,13 +10,13 @@ main() {
                 [[ $# -ge 2 ]] || die "Missing value: $1"
                 case $1 in --config) config=$2;; --user) user=$2;; --phase) phase=$2;; --module) module=$2;; --input-dir) input_dir=$2;; esac
                 shift 2 ;;
-            --help) echo 'Usage: bash install.sh [--ref REV] [--config FILE] [--user USER] [--input-dir DIR] [--phase system|session] [--module all|base|network|repositories|desktop|assets|applications]'; return ;;
+            --help) echo 'Usage: bash install.sh [--ref REV] [--config FILE] [--user USER] [--input-dir DIR] [--phase system|session] [--module all|base|network|repositories|desktop|graphics|assets|applications]'; return ;;
             *) die "Unknown argument: $1" ;;
         esac
     done
     platform
     [[ $phase == system || $phase == session ]] || die 'Invalid phase'
-    [[ $module =~ ^(all|base|network|repositories|desktop|assets|applications)$ ]] || die 'Unknown module'
+    [[ $module =~ ^(all|base|network|repositories|desktop|graphics|assets|applications)$ ]] || die 'Unknown module'
     if [[ $phase == system && $EUID != 0 ]]; then
         command -v sudo >/dev/null || die 'sudo is required; ask root to install it and grant this account sudo access.'
         log 'Checking sudo access for workstation provisioning.'
@@ -50,9 +50,16 @@ main() {
     trap 'echo "Installation failed at line $LINENO; correct the error and rerun. Completed work is retained." >&2' ERR
     if ! id "$DESKTOP_USER" >/dev/null 2>&1; then
         [[ $CREATE_USER == yes ]] || die 'Desktop user does not exist.'
-        if ! { exec 7<>/dev/tty; } 2>/dev/null; then die 'Creating a user requires a terminal for the password. Connect with ssh -t or use the VM console.'; fi
-        adduser --disabled-password --gecos '' "$DESKTOP_USER"
-        touch "/var/lib/debian-workstation/$DESKTOP_USER.password-pending"
+        if ! { exec 7<>/dev/tty; } 2>/dev/null; then die 'Creating a user requires a terminal. Connect with ssh -t or use the VM console.'; fi
+        touch "/var/lib/debian-workstation/$DESKTOP_USER.account-pending"
+        # Retain Debian's normal password, Full Name and other account questions.
+        adduser "$DESKTOP_USER" <&7 >&7 2>&7
+        rm -f "/var/lib/debian-workstation/$DESKTOP_USER.account-pending"
+    elif [[ -f /var/lib/debian-workstation/$DESKTOP_USER.account-pending ]]; then
+        if ! { exec 7<>/dev/tty; } 2>/dev/null; then die 'Complete the interrupted account setup through a terminal, then rerun.'; fi
+        passwd "$DESKTOP_USER" <&7 >&7 2>&7
+        chfn "$DESKTOP_USER" <&7 >&7 2>&7
+        rm -f "/var/lib/debian-workstation/$DESKTOP_USER.account-pending"
     fi
     if [[ -f /var/lib/debian-workstation/$DESKTOP_USER.password-pending ]]; then
         if ! { exec 7<>/dev/tty; } 2>/dev/null; then die 'Complete the new account password setup through a terminal, then rerun.'; fi
@@ -77,7 +84,7 @@ main() {
     python3 "$DW_ROOT/scripts/persist.py" "$DW_ROOT" "$installed"
     DW_ROOT=$installed
     export DW_ROOT
-    for name in base network repositories desktop assets applications; do
+    for name in base network repositories desktop graphics assets applications; do
         if [[ $module == all || $module == "$name" ]]; then
             log "Running $name"
             source "$DW_ROOT/modules/$name.sh"

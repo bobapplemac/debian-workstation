@@ -1,5 +1,30 @@
 # Initial implementation validation — 2026-11-25
 
+## Account setup and graphics follow-up
+
+New-account setup now delegates directly to native interactive adduser, retaining
+Full Name and the usual optional account fields; existing GECOS data is not rewritten.
+Syntax checks cover this change; the revised native account wizard still requires
+confirmation on the next fresh install.
+
+New graphics fixtures cover sysfs display-class detection, virtual GPU/native
+firmware choices, the RTX 5060 Ti kernelopen flag, legacy/mixed-card rejection,
+subsystem restrictions, trusted/correct candidate selection and mixed runtime
+version/removal refusal. The live opt-in APT test authenticated current Debian and
+NVIDIA repository indexes, ran the production libapt validator and resolved the
+complete open driver stack from empty dpkg state: 394 packages, no toolkit, closed
+kernel-module package or removals. The signed metadata/artifact checksum chain was
+also verified. NVIDIA driver 620.70.10-1 was observed, not pinned.
+
+Final regression run under Debian 13 WSL: 44 passed, six nmcli-dependent cases
+skipped (50 total), with the opt-in native systemd fixture enabled. ShellCheck at
+warning level and Bash/Python syntax checks passed. No host driver installation
+or physical-account database change was used for this follow-up validation.
+
+These are dependency/support checks, not GPU runtime validation. No physical
+NVIDIA DKMS installation, Secure Boot enrollment or RTX 5060 Ti X11 boot has been
+tested yet. NVIDIA/Intel/AMD physical-hardware acceptance remains pending.
+
 ## Portal lifecycle repair: direct fresh-VM verification
 
 Root cause confirmed on the fresh VM: no active graphical-session.target during

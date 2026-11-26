@@ -1,0 +1,8 @@
+# Exact driver/runtime allowlist. Never make the CUDA repository a general source.
+Package: nvidia-open nvidia-driver nvidia-driver-cuda nvidia-driver-libs nvidia-kernel-open-dkms nvidia-kernel-support nvidia-modprobe nvidia-powerd nvidia-persistenced nvidia-settings nvidia-xconfig nvidia-opencl-icd nvidia-opencl-common nvidia-egl-common nvidia-egl-icd nvidia-vulkan-common nvidia-vulkan-icd nvidia-vdpau-driver xserver-xorg-video-nvidia firmware-nvidia-gsp libcuda1 libcudadebugger1 libnvcuvid1 libnvoptix1 libxnvctrl0 libegl-nvidia0 libgles-nvidia1 libgles-nvidia2 libglx-nvidia0 libnvidia-allocator1 libnvidia-api1 libnvidia-cfg1 libnvidia-eglcore libnvidia-glcore libnvidia-glvkspirv libnvidia-gpucomp libnvidia-encode1 libnvidia-fbc1 libnvidia-fmdrv1 libnvidia-imex1 libnvidia-ml1 libnvidia-ngx1 libnvidia-nvvm4 libnvidia-nvvm704 libnvidia-opticalflow1 libnvidia-pkcs11-openssl3 libnvidia-present libnvidia-ptxjitcompiler1 libnvidia-rtcore libnvidia-sandboxutils libnvidia-tileiras libnvidia-vksc-core libnvidia-egl-gbm1 libnvidia-egl-wayland21 libnvidia-egl-xcb1 libnvidia-egl-xlib1
+Pin: origin "developer.download.nvidia.com"
+Pin-Priority: 600
+
+Package: *
+Pin: origin "developer.download.nvidia.com"
+Pin-Priority: -1

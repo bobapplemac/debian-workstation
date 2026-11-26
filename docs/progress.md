@@ -1,5 +1,48 @@
 # Development record
 
+## Native account prompts and optional physical graphics support
+
+User-requested changes: new regular accounts now use normal interactive adduser
+instead of suppressing GECOS and asking only for a password. This restores Full
+Name and the standard optional fields. Existing accounts are preserved; chfn is
+documented for correcting their display name. Interrupted native account setup has
+a dedicated marker and resumes password/chfn prompts rather than silently leaving
+an incomplete account. The older password-pending marker is still recognized.
+
+A graphics module follows desktop/hypervisor setup and is individually runnable.
+It inspects PCI display adapters, retains virtual drivers, and offers native
+Intel/AMD firmware/Mesa or NVIDIA's modern open kernel modules. Default ask requires
+real terminal consent; yes/no config supports explicit unattended choice or skip.
+
+NVIDIA uses only its official Debian 13 signed source with a verified current key
+fingerprint and exact driver/runtime allowlist; unrelated CUDA packages are blocked.
+Current driver candidates are selected dynamically, not frozen. GPU support comes
+from supported-gpus.json inside the exact APT-authenticated driver package, including
+kernelopen and subsystem checks for every NVIDIA card. Unmanaged existing driver
+stacks require migration review. Candidate and selected runtime versions must be
+coherent; simulated removals/closed modules stop. Default kernel headers, DKMS
+module license/version and Secure Boot MOK enrollment are checked. No forced reboot,
+driver unload, generated Xorg layout, legacy-kernel fallback or Secure Boot disabling.
+
+Real signed-repository tests verified the NVIDIA InRelease -> Packages.gz -> exact
+driver package SHA256 chain. The production libapt validator and isolated empty-
+status transaction resolve 394 package candidates with matching 620.70.10-1 driver
+components, no CUDA toolkit, no closed kernel module and no removals. This observed
+version is not a pin. The package manifest names PCI 10de:2d04 as RTX 5060 Ti with
+kernelopen support. Debian's actual DKMS generate_mok interface was inspected.
+
+Final Debian WSL suite: 50 tests discovered, 44 passed and six existing native
+NetworkManager cases skipped because nmcli is absent there. The new graphics
+cases, native APT fixtures, Notepadqq Linux integration and opt-in systemd fixture
+passed. Python/Bash syntax and ShellCheck warning checks passed. The revised
+interactive account wizard is delegated to native adduser and still awaits the
+next fresh-install human acceptance run.
+
+Physical RTX 5060 Ti boot, DKMS installation and Secure Boot enrollment remain
+unvalidated and must be accepted on real hardware. No driver was installed on the
+Windows host or WSL during these simulations. See graphics.md for trust/security,
+recovery, source selection and exact verification commands.
+
 ## Portal lifecycle root cause and validated repair
 
 Direct access to the authorized fresh VM confirmed that graphical-session.target

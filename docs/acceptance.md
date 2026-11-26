@@ -30,6 +30,11 @@ bash install.sh
 From root, choose/create a regular workstation account and set its password via
 the terminal. From a regular account, verify sudo authentication succeeds and the
 same account is selected. Check the passwordless-sudo option is **off** by default.
+For a new account, enter Full Name in the standard adduser questions and confirm
+that name appears on the greeter. On physical GPU hardware, test the graphics offer
+and explicit decline path; a virtual GPU should retain its existing guest driver.
+See [graphics acceptance](graphics.md) for NVIDIA open-module, Secure Boot and
+RTX 5060 Ti boot checks, which require real hardware.
 
 Record the explicit system-phase completion message and any diagnostics. Confirm
 there was no forced reboot, autologin, desktop restart or live network disconnect.

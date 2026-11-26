@@ -23,6 +23,12 @@ check 'Gear Lever' flatpak info --system it.mijorus.gearlever
 check 'Gear Lever background preference' bash -c '[[ $(flatpak run --command=gsettings it.mijorus.gearlever get it.mijorus.gearlever fetch-updates-in-background) == true ]]'
 check 'Gear Lever autostart' bash -c 'find "$HOME/.config/autostart" -iname "*gearlever*" -type f -print -exec cat {} \; | grep -q fetch-updates'
 check 'Graphical boot' bash -c '[[ $(systemctl get-default) == graphical.target ]]'
+check 'No pending NVIDIA installation' test ! -e /var/lib/debian-workstation/nvidia-open.pending
+if [[ -f /var/lib/debian-workstation/nvidia-open.version ]]; then
+    check 'Loaded NVIDIA open kernel module' bash -c '[[ -d /sys/module/nvidia ]] && license=$(modinfo -F license nvidia) && [[ $license == *MIT*GPL* || $license == *GPL*MIT* ]]'
+    check 'NVIDIA driver and detected GPUs' nvidia-smi
+    check 'OpenGL renderer' glxinfo -B
+fi
 if [[ -f /usr/share/icons/Windows-Aero-Light/.debian-workstation ]]; then check 'Native Windows XCursor loading' python3 "$root/scripts/cursors/native.py"; fi
 printf '\nFailures: %s\nVisual and interactive acceptance remains separate; see docs/acceptance.md.\n' "$failures"
 ((failures==0))

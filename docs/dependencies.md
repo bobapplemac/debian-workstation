@@ -1,5 +1,12 @@
 # Dependency inventory and trust
 
+Optional physical GPU support adds NVIDIA's signed Debian 13 driver repository,
+key fingerprint 02182E60104FCDC26EAE1B8597A5D4CB8793F200 and an exact driver/runtime
+allowlist (all other vendor packages blocked). The selected open kernel module
+uses matching proprietary user-space/firmware, not a fully open stack. Intel/AMD
+firmware/Mesa remain native Debian packages. See graphics.md for trust, candidate
+support checks, update policy and pending physical-hardware validation.
+
 The baseline companion was reviewed at
 `8446f8dccd9e3da21f180bbc6fac22ebf0081d0b`. Its preseed creates only root,
 permits root SSH password login, uses ifupdown, supplies Debian Trixie/update and

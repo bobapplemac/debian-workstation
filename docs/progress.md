@@ -1,5 +1,71 @@
 # Development record
 
+## Portal lifecycle root cause and validated repair
+
+Direct access to the authorized fresh VM confirmed that graphical-session.target
+was inactive throughout Cinnamon X11 login, despite the GTK portal, frontend and
+GNOME Terminal already being PartOf that target. The installed Mint XApp backend
+lacked that relationship entirely. At logout, GTK/XApp/Terminal exited with status
+1 when X disappeared; the still-running frontend tried to reactivate XApp before
+the next display was ready and logged Failed to initialize Gtk.
+
+The desktop installer now uses LightDM's session-wrapper mechanism around the
+unchanged Debian /etc/X11/Xsession. A small native session target binds to and
+retains graphical-session.target; the wrapper imports display activation variables,
+starts the session target and synchronously stops both targets before returning
+to LightDM. XApp receives a PartOf/After drop-in. Custom existing wrappers are
+rejected. This preserves normal Xsession hooks and avoids watchers, restart loops,
+reset-failed loops and reclassifying all status-1 exits as successful.
+
+LightDM caches its running configuration. The first logout/login after installing
+the repair still used the old wrapper (verified in lightdm.log), so one explicit
+reboot was needed for the existing VM. After reboot, both native targets were
+active. The user then performed two normal logout/login cycles and opened/cancelled
+the chooser. SSH inspection confirmed clean stop/start jobs for every portal at
+both boundaries, no failed user units, fresh portal processes, and the unchanged
+expected blue accent tuple. The recurring lifecycle defect is resolved on this VM.
+
+Validation: all 41 standard regression cases passed on the VM, including new
+wrapper ordering, argument preservation, child-error cleanup, existing-owner and
+custom-wrapper checks. An additional opt-in native systemd fixture passed using
+unique runtime targets/services; it verifies RefuseManualStart/StopWhenUnneeded and
+PartOf stop behavior without touching the real desktop targets. ShellCheck at
+warning level and native systemd target syntax validation passed under Debian WSL.
+See session-lifecycle.md for implementation, acceptance and recovery.
+
+The final VM run passed all 42 cases together with DW_SYSTEMD_TESTS=1. The updated
+installed workstation verifier reported zero failures. The updated implementation
+and offline documentation were persisted, targeted installation was rerun without
+configuration duplication, and the continuation completion signature was refreshed
+by actually completing it in the live Cinnamon session. Temporary SSH test keys
+were removed after validation. No remote push is implied by these local changes.
+
+## Fresh VM verification after Notepadqq repairs
+
+User-supplied fresh-VM output confirms plain Notepadqq name and GithubUpdater;
+the user also confirms the menu regression is fixed. The existing verifier reports
+zero failures: Debian/Cinnamon session, package/repository checks, no pending APT
+transaction changes, artwork/glyphs, expected blue portal tuple, active grid service,
+Gear Lever background preference/autostart, graphical target and 3,072 native
+Windows XCursor loads. NetworkManager owns the connected migrated Ethernet
+connection and DNS lookup succeeds. No failed system services were listed.
+
+However, the separate user-service check lists xdg-desktop-portal-gtk.service as
+failed. The successful accent-color response does not establish the health of all
+portal backends. Service status/journal evidence is pending before diagnosing or
+changing portal startup/configuration. The verifier now checks failed system and
+user units explicitly, so this condition cannot yield an overall zero-failure
+report. This verifier improvement is local until separately published. Visual and
+interactive acceptance remains pending; no release-readiness claim.
+
+Follow-up unit status shows the GTK portal active/running after a successful
+restart. The journal records an earlier status-1 exit and subsequent successful
+start, without an explanatory backend error. The current failure has recovered;
+the cause remains unknown. No portal configuration change or failure-counter
+reset is justified by this evidence. Next acceptance checks: no failed user units,
+a real Flatpak file chooser, and stability after logout/login. Recurrence requires
+broader session journal evidence around the exit.
+
 ## Fresh-install follow-up: successful continuation and menu-name repair
 
 The user applied commit 01125e2 to the fresh VM and reported successful setup

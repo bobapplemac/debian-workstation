@@ -1,0 +1,5 @@
+[Unit]
+Description=Debian Workstation Cinnamon X11 session
+Documentation=man:systemd.special(7)
+BindsTo=graphical-session.target
+After=graphical-session.target

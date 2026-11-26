@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Own the native graphical-session lifecycle from LightDM around Debian Xsession;
+  stop portal backends before X teardown and bind the Mint XApp unit to the session.
+- Verify graphical-session activity and failed system/user units, which were not
+  covered by the original accent-color-only portal check.
+
 - Repair existing Gear Lever-generated Notepadqq menu suffixes, preserving launcher
   commands, icons, desktop actions and update configuration with an original backup.
 

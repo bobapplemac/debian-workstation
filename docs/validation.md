@@ -1,5 +1,56 @@
 # Initial implementation validation — 2026-11-25
 
+## Portal lifecycle repair: direct fresh-VM verification
+
+Root cause confirmed on the fresh VM: no active graphical-session.target during
+Cinnamon/LightDM X11, plus missing XApp PartOf linkage. A native session target,
+LightDM wrapper around Debian's unchanged Xsession and XApp drop-in correct the
+startup/shutdown lifecycle. LightDM needed one reboot to load its new wrapper.
+
+After reboot the graphical targets were active and all portals succeeded. The user
+then completed two normal logout/login cycles and exercised the Gear Lever chooser.
+Direct SSH inspection of the complete journal showed clean portal stops before
+graphical target teardown and fresh successful starts after each login. No failed
+user units remained and the portal's expected blue accent tuple was retained.
+No blanket exit-status success override or automatic reset-failed was used.
+
+All 41 standard tests passed on the actual VM; the additional isolated native
+systemd lifecycle fixture also passed. ShellCheck warning checks and systemd target
+syntax validation passed in Debian 13 WSL. Earlier Windows-only skip limitations
+for Notepadqq shell integration are now covered by actual Linux runs. These
+results resolve this logout/login defect, while remaining visual/interactive
+acceptance checks still apply.
+
+Final direct run: 42 tests passed with the native systemd fixture enabled; the
+updated installed verifier reported zero failures, including graphical-session
+activity, failed system/user-unit checks, original artwork, portal accent response
+and 3,072 cursor loads. Updated source/docs were persisted on the VM, the targeted
+repair reran successfully, and the continuation completed for the new implementation
+signature. Temporary SSH test authorization was removed afterward.
+
+## Subsequent user-run fresh VM results
+
+The fresh console installation reached graphical first-login continuation, then
+completed after the Notepadqq discovery fix. The subsequent menu repair was
+confirmed by the user and Gear Lever JSON shows plain Notepadqq with GithubUpdater.
+The deployed verifier reported zero failures, including the expected blue accent
+tuple and 3,072 native cursor loads. The migrated NetworkManager connection is
+connected and DNS resolves. The system failed-unit list is empty.
+
+A separate failed-user-unit listing revealed xdg-desktop-portal-gtk.service failed;
+the earlier verifier did not inspect failed units. The local verifier now includes
+both failed-unit checks. Diagnosis awaits the unit status/journal; do not treat the
+old zero-failure result as complete portal/backend acceptance. Visual and
+interactive checks are not yet confirmed.
+
+Follow-up user output shows the GTK portal active/running after a successful
+restart. Its journal contains an earlier status-1 exit but no diagnostic cause.
+Record this as a recovered failure with unexplained cause, rather than a persistent
+backend failure or a proven startup race. Flatpak file chooser and next-login
+stability checks remain outstanding.
+
+## Earlier development environment validation
+
 Environment: Windows development host with Python and Git Bash; an explicitly
 authorized disposable Debian 13 amd64 VMware VM with an existing customized
 Cinnamon X11 desktop. No connection credentials, private addresses, proprietary

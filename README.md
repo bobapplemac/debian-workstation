@@ -159,6 +159,8 @@ errors and handled signals; persistent continuation lives under
 
 Read [the LMDE security policy](docs/security-policy.md) and
 [network migration/recovery](docs/networking.md) before applying to a real machine.
+The [session lifecycle notes](docs/session-lifecycle.md) explain native portal
+shutdown and the one reboot needed when adding the repair to an existing install.
 The Mint repository has an exact package allowlist. Debian security libadwaita
 packages take precedence even when their versions sort lower than Mint's;
 this can reduce accent integration and can require an explicit reviewed

@@ -9,6 +9,9 @@ check() {
 }
 check 'Debian 13 amd64' bash -c 'source /etc/os-release; [[ $ID == debian && $VERSION_ID == 13 && $(dpkg --print-architecture) == amd64 ]]'
 check 'Cinnamon X11 session' bash -c '[[ ${XDG_SESSION_TYPE:-} == x11 && ${XDG_CURRENT_DESKTOP,,} == *cinnamon* && $EUID != 0 ]]'
+check 'Graphical session lifecycle' systemctl --user is-active graphical-session.target
+check 'No failed system services' bash -c 'units=$(systemctl --failed --no-legend --plain --no-pager) || exit; printf "%s\n" "$units"; [[ -z $units ]]'
+check 'No failed user services' bash -c 'units=$(systemctl --user --failed --no-legend --plain --no-pager) || exit; printf "%s\n" "$units"; [[ -z $units ]]'
 check 'Desktop packages' dpkg-query -W cinnamon nemo lightdm lightdm-gtk-greeter firefox-esr mint-themes mint-y-icons libadwaita-1-0 xdg-desktop-portal-xapp gnome-software flatpak
 check 'Repository policy' python3 "$root/scripts/repositories/policy.py" validate
 check 'APT full-upgrade simulation' bash -c 'output=$(LC_ALL=C apt-get -s full-upgrade) || exit; printf "%s\n" "$output"; ! grep -q "^Remv " <<< "$output"'

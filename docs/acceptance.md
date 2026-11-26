@@ -72,6 +72,11 @@ cursor loading. A response from the accent-color portal is not a visual color
 acceptance result; check the blue tuple approximately (0.04706, 0.45882, 0.87059)
 and actual GTK4 controls separately. Policy fallback can legitimately change it.
 
+Check `systemctl --user is-active graphical-session.target` during Cinnamon login.
+Test two normal logout/login cycles after activating the lifecycle configuration
+with the planned reboot. Confirm no portal backend exit failures or XApp GTK
+initialization failures at either boundary. See [session lifecycle](session-lifecycle.md).
+
 ## Visual and interactive checks
 
 - LightDM: Debian default wallpaper, Adwaita/Papirus, intended clock/layout,

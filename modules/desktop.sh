@@ -24,5 +24,6 @@ desktop_main() {
         *) log "No guest integration profile for $hypervisor" ;;
     esac
     atomic_install "$DW_ROOT/assets/lightdm.conf" /etc/lightdm/lightdm.conf.d/90-debian-workstation.conf
+    bash "$DW_ROOT/scripts/session/install.sh"
     systemctl set-default graphical.target
 }

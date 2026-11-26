@@ -20,6 +20,12 @@ applets, portal permissions, GTK icon verification or grid initialization; keepi
 those operations in one visible continuation is simpler and avoids bus ownership
 mistakes. No automatic login, forced reboot or display-manager restart occurs.
 
+LightDM's authenticated X11 session is wrapped around the unchanged Debian Xsession
+to own the native systemd graphical-session lifecycle. This stops GUI services
+before X display teardown and fixes portal failures across logout/login. See
+[session lifecycle](session-lifecycle.md) for the observed cause, native target
+dependency, XApp drop-in, compatibility checks and recovery procedure.
+
 `install.sh` is the local/remote entry. A remote bootstrap resolves its requested
 ref once to a full commit, downloads one archive, validates every member (no
 links/special files/traversal/duplicates; bounded compressed/expanded size),

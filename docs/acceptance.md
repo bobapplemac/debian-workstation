@@ -35,6 +35,10 @@ that name appears on the greeter. On physical GPU hardware, test the graphics of
 and explicit decline path; a virtual GPU should retain its existing guest driver.
 See [graphics acceptance](graphics.md) for NVIDIA open-module, Secure Boot and
 RTX 5060 Ti boot checks, which require real hardware.
+On an older NVIDIA card, verify that a separate proprietary-driver offer appears
+only when Debian's manifest supports it. Test decline, NVIDIA_LEGACY=no and
+noninteractive behavior. Never accept an incompatible older driver for Blackwell
+or a mixed GPU set supported by neither stack.
 
 Record the explicit system-phase completion message and any diagnostics. Confirm
 there was no forced reboot, autologin, desktop restart or live network disconnect.

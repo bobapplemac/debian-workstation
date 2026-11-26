@@ -1,5 +1,27 @@
 # Development record
 
+## Older NVIDIA fallback
+
+After the authorized account/graphics push (bf1dd9b), the user suggested an older
+driver option for incompatible cards. The open stack remains preferred. Only an
+actual GPU-compatibility rejection triggers fallback; metadata/other errors still
+stop. The temporary vendor source/key/pins are restored before native Debian
+driver, kernel and diagnostic candidate checks.
+
+The native package's authenticated supported-gpus.json must support every NVIDIA
+adapter without a legacybranch restriction. NVIDIA_LEGACY=ask offers a separately
+consented proprietary kernel module; yes/no support explicit unattended permission
+or skip. Absent Kepler/etc. branches are not imported. Selected driver families
+are retained for reruns and mixed incompatible GPU sets stop. Secure Boot, headers
+and module verification are shared, with flavor-specific license verification.
+
+Actual signed APT/package tests passed for upstream 620.70.10-1 (RTX 5060 Ti 2d04,
+kernelopen) and native Debian 550.163.01-2 (GTX 1080 1b80). Each empty-status
+transaction resolved 394 packages without toolkit, wrong-module choice or removals.
+No driver was installed. Final WSL regression: 47 passed of 53, six existing nmcli
+cases skipped; ShellCheck passed. Physical boot/DKMS/enrollment validation remains
+pending. Versions are observations, not holds.
+
 ## Native account prompts and optional physical graphics support
 
 User-requested changes: new regular accounts now use normal interactive adduser

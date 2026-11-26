@@ -54,6 +54,20 @@ class HardwareTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             hardware.supported([gpu(), gpu('0x1b80')], manifest)
 
+    def test_older_card_has_validated_debian_fallback_but_not_open_module(self):
+        manifest = {'chips': [{'devid': '0x1B80', 'name': 'GeForce GTX 1080', 'features': []}]}
+        with self.assertRaises(hardware.UnsupportedGPU):
+            hardware.supported([gpu('0x1b80')], manifest)
+        self.assertEqual(hardware.supported([gpu('0x1b80')], manifest, require_open=False), ['GeForce GTX 1080'])
+        manifest['chips'][0]['legacybranch'] = '470.xx'
+        with self.assertRaises(hardware.UnsupportedGPU):
+            hardware.supported([gpu('0x1b80')], manifest, require_open=False)
+
+    def test_older_driver_is_never_offered_for_blackwell_missing_from_its_manifest(self):
+        manifest = {'chips': [{'devid': '0x1B80', 'name': 'GeForce GTX 1080', 'features': []}]}
+        with self.assertRaises(hardware.UnsupportedGPU):
+            hardware.supported([gpu()], manifest, require_open=False)
+
     def test_subsystem_specific_support_is_respected(self):
         chip = {'devid': '0x2D04', 'name': 'specific adapter', 'features': ['kernelopen'],
                 'subvendorid': '0x10DE', 'subdevid': '0x9999'}
@@ -68,6 +82,19 @@ class HardwareTests(unittest.TestCase):
 
 
 class CandidateTests(unittest.TestCase):
+    def test_debian_fallback_requires_native_trusted_coherent_candidates(self):
+        cache = {name: SimpleNamespace(candidate=SimpleNamespace(version='550.163.01-2',
+                    origins=[SimpleNamespace(origin='Debian', site='deb.debian.org', trusted=True)]))
+                 for name in ('nvidia-driver', 'nvidia-kernel-dkms', 'nvidia-smi')}
+        self.assertEqual(candidates.validate_debian(cache), '550.163.01-2')
+        cache['nvidia-kernel-dkms'].candidate.version = '535.1.1-1'
+        with self.assertRaises(ValueError):
+            candidates.validate_debian(cache)
+        cache['nvidia-kernel-dkms'].candidate.version = '550.163.01-2'
+        cache['nvidia-driver'].candidate.origins = [SimpleNamespace(origin='NVIDIA', site='developer.download.nvidia.com', trusted=True)]
+        with self.assertRaises(ValueError):
+            candidates.validate_debian(cache)
+
     def cache(self, *, module_version='620.70.10-1', trusted=True, extra=False):
         result = {}
         for name in ('nvidia-open', 'nvidia-driver', 'nvidia-kernel-open-dkms'):

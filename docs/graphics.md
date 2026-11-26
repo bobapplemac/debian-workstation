@@ -5,6 +5,22 @@ before the planned reboot. It reads PCI display adapters from sysfs. Virtual GPU
 retain Debian kernel/Mesa drivers and guest integration; the host GPU is not assumed
 to be exposed inside a VM. A real passed-through GPU is detected normally.
 
+The preferred NVIDIA path remains the newer open module. If it does not support
+a detected card, the temporary vendor-repository probe is restored and Debian's
+native proprietary driver is checked separately. It is offered only when its own
+authenticated GPU manifest supports **every** NVIDIA adapter. The observed Debian
+550 driver supports a GTX 1080 fixture but not the RTX 5060 Ti, so it is never
+offered as an incompatible substitute for Blackwell. If neither stack supports all
+cards, installation stops for review.
+
+Fallback consent is separate: `NVIDIA_LEGACY=ask|yes|no`, default ask. Even
+GRAPHICS_DRIVERS=yes does not silently authorize a closed kernel module; unattended
+fallback requires NVIDIA_LEGACY=yes too. The selected Debian stack is retained on
+reruns and after an enrollment pause. Switching installed driver families requires
+a reviewed migration. The initial fallback uses the available native
+nvidia-driver/nvidia-kernel-dkms family, not abandoned branches or packages imported
+from another Debian release. Not every old GPU has a usable driver in Trixie.
+
 `GRAPHICS_DRIVERS=ask` is the default. For physical NVIDIA or Intel/AMD adapters the
 installer explains the package/source choice and asks through the terminal. The
 default answer is no. Without a terminal it warns and skips, rather than treating
@@ -53,7 +69,8 @@ Coherent authenticated nvidia-open, nvidia-driver and nvidia-kernel-open-dkms
 candidates are required. The installer reads supported-gpus.json.gz from a fixed
 member of the exact APT-authenticated nvidia-driver package. Every detected NVIDIA
 display adapter must match its kernelopen flag and any subsystem IDs. Unsupported,
-legacy-only or mixed incompatible GPUs stop before installing drivers. No PCI range
+legacy-only or mixed incompatible GPUs trigger the separately validated Debian
+fallback, or stop if that is incompatible too. No PCI range
 or model-name guess selects support. Versioned metadata is cached to avoid
 repeated downloads for an unchanged candidate.
 
@@ -126,6 +143,15 @@ python3 tests/graphics-repository-simulation.py \
 ```
 
 It uses isolated sources/lists/cache and empty dpkg status; it never installs drivers.
+
+The native Debian fallback simulation needs no NVIDIA keyring:
+
+```bash
+python3 tests/graphics-repository-simulation.py --flavor debian
+```
+
+Both tests inspect actual authenticated driver-package manifests. They establish
+dependency resolution and metadata support, not a working DKMS build or display.
 
 Primary sources: [NVIDIA Debian installation](https://docs.nvidia.com/datacenter/tesla/driver-installation-guide/latest/debian.html),
 [open module compatibility](https://github.com/NVIDIA/open-gpu-kernel-modules),

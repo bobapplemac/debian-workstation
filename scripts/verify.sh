@@ -24,9 +24,15 @@ check 'Gear Lever background preference' bash -c '[[ $(flatpak run --command=gse
 check 'Gear Lever autostart' bash -c 'find "$HOME/.config/autostart" -iname "*gearlever*" -type f -print -exec cat {} \; | grep -q fetch-updates'
 check 'Graphical boot' bash -c '[[ $(systemctl get-default) == graphical.target ]]'
 check 'No pending NVIDIA installation' test ! -e /var/lib/debian-workstation/nvidia-open.pending
+check 'No pending Debian NVIDIA installation' test ! -e /var/lib/debian-workstation/nvidia-debian.pending
 if [[ -f /var/lib/debian-workstation/nvidia-open.version ]]; then
     check 'Loaded NVIDIA open kernel module' bash -c '[[ -d /sys/module/nvidia ]] && license=$(modinfo -F license nvidia) && [[ $license == *MIT*GPL* || $license == *GPL*MIT* ]]'
     check 'NVIDIA driver and detected GPUs' nvidia-smi
+    check 'OpenGL renderer' glxinfo -B
+fi
+if [[ -f /var/lib/debian-workstation/nvidia-debian.version ]]; then
+    check 'Loaded Debian proprietary NVIDIA module' bash -c '[[ -d /sys/module/nvidia && $(modinfo -F license nvidia) == NVIDIA ]]'
+    check 'Debian NVIDIA driver and detected GPUs' nvidia-smi
     check 'OpenGL renderer' glxinfo -B
 fi
 if [[ -f /usr/share/icons/Windows-Aero-Light/.debian-workstation ]]; then check 'Native Windows XCursor loading' python3 "$root/scripts/cursors/native.py"; fi

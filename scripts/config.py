@@ -7,7 +7,7 @@ import sys
 DEFAULTS = dict(DESKTOP_USER='', CREATE_USER='yes', PASSWORDLESS_SUDO='no',
                 HYPERVISOR='auto', INSTALL_NOTEPADQQ='yes', INSTALL_1PASSWORD='yes',
                 INSTALL_1PASSWORD_CLI='yes', INSTALL_CORE_FONTS='yes',
-                CURSOR_ARCHIVE='', FONT_ARCHIVE='', NEMO_REF='main', GRAPHICS_DRIVERS='ask')
+                CURSOR_ARCHIVE='', FONT_ARCHIVE='', NEMO_REF='main', GRAPHICS_DRIVERS='ask', NVIDIA_LEGACY='ask')
 
 def parse(text):
     result = DEFAULTS.copy()
@@ -28,6 +28,8 @@ def parse(text):
         raise ValueError('HYPERVISOR must be auto, none, vmware, kvm or microsoft')
     if result['GRAPHICS_DRIVERS'] not in ('ask', 'yes', 'no'):
         raise ValueError('GRAPHICS_DRIVERS must be ask, yes or no')
+    if result['NVIDIA_LEGACY'] not in ('ask', 'yes', 'no'):
+        raise ValueError('NVIDIA_LEGACY must be ask, yes or no')
     if result['DESKTOP_USER'] and not re.fullmatch(r'[a-z_][a-z0-9_-]{0,31}', result['DESKTOP_USER']):
         raise ValueError('Invalid desktop username')
     if not re.fullmatch(r'[a-zA-Z0-9_./-]+', result['NEMO_REF']) or result['NEMO_REF'].startswith('-'):

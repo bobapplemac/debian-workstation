@@ -23,6 +23,8 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.parse('')['NEMO_REF'],'main')
         self.assertEqual(config.parse('')['GRAPHICS_DRIVERS'],'ask')
         with self.assertRaises(ValueError):config.parse('GRAPHICS_DRIVERS=legacy')
+        self.assertEqual(config.parse('')['NVIDIA_LEGACY'],'ask')
+        with self.assertRaises(ValueError):config.parse('NVIDIA_LEGACY=automatic')
         self.assertEqual(config.parse('FONT_ARCHIVE=/tmp/my fonts.zip')['FONT_ARCHIVE'],'/tmp/my fonts.zip')
 
 class NetworkTests(unittest.TestCase):

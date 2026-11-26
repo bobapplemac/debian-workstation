@@ -1,5 +1,15 @@
 # Initial implementation validation — 2026-11-25
 
+## Separately validated older NVIDIA branch
+
+Signed APT and authenticated package-manifest tests passed for both driver paths:
+upstream open 620.70.10-1 supports RTX 5060 Ti; native Debian 550.163.01-2 supports
+GTX 1080. Each resolves 394 packages from empty status without toolkit, wrong
+kernel module or removals. Native fallback requires separate consent and cannot
+substitute an incompatible driver for Blackwell. Regression: 47 passed, six
+nmcli-dependent skips (53 total); ShellCheck passed. No physical driver install
+or boot has been performed.
+
 ## Account setup and graphics follow-up
 
 New-account setup now delegates directly to native interactive adduser, retaining

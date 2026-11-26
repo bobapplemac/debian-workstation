@@ -3,6 +3,7 @@
 set -Eeuo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 source "$root/lib/common.sh"
+source "$root/lib/graphics.sh"
 [[ $EUID == 0 ]] || die 'NVIDIA system installation requires root.'
 platform
 devices=$1
@@ -65,33 +66,10 @@ fi
 python3 "$root/scripts/graphics/hardware.py" supported "$devices" "$work/supported.json"
 atomic_install "$work/supported.json" "$cache"
 simulate "nvidia-open=$version" "nvidia-kernel-open-dkms=$version"
-apt_install dkms mokutil linux-image-amd64 linux-headers-amd64
-if [[ -d /sys/firmware/efi ]]; then
-    secureboot=$(LC_ALL=C mokutil --sb-state) || die 'Cannot determine Secure Boot state; resolve EFI access before installing DKMS graphics.'
-    if [[ $secureboot == *'SecureBoot enabled'* ]]; then
-        dkms generate_mok
-        if ! mokutil --test-key /var/lib/dkms/mok.pub; then
-            die 'Secure Boot requires enrolling the DKMS key. Run sudo mokutil --import /var/lib/dkms/mok.pub, choose a temporary password, reboot and enroll it at the MOK screen, then rerun. Secure Boot has not been disabled.'
-        fi
-    elif [[ $secureboot != *'SecureBoot disabled'* ]]; then
-        die "Unrecognized Secure Boot state: $secureboot"
-    fi
-fi
+graphics_prepare_kernel
 log "Installing NVIDIA open-module stack $version. Existing Xorg configuration is retained; changes take effect after the planned reboot."
 # Once package installation begins, retain the repository for partial-run recovery.
 committed=yes
 printf '%s\n' "$version" > /var/lib/debian-workstation/nvidia-open.pending
 apt_install "nvidia-open=$version" "nvidia-kernel-open-dkms=$version"
-kernel=$(basename "$(readlink -f /vmlinuz)")
-[[ $kernel == vmlinuz-*-amd64 ]] || die 'Cannot identify the Debian amd64 next-boot kernel from /vmlinuz; inspect DKMS status before reboot.'
-kernel=${kernel#vmlinuz-}
-[[ -d /lib/modules/$kernel/build ]] || die "Kernel headers missing for $kernel"
-license=$(modinfo -k "$kernel" -F license nvidia)
-[[ $license == *MIT*GPL* || $license == *GPL*MIT* ]] || die "Expected the NVIDIA open module, got license: $license"
-built=$(modinfo -k "$kernel" -F version nvidia)
-[[ $built == "${version%-*}" ]] || die "DKMS module version $built differs from user-space $version"
-dkms status
-printf '%s\n' "$version" > /var/lib/debian-workstation/nvidia-open.version
-printf '%s\n' "$kernel" > /var/lib/debian-workstation/nvidia-open.kernel
-rm -f /var/lib/debian-workstation/nvidia-open.pending
-log "Verified open NVIDIA module for kernel $kernel. Reboot when provisioning is complete; then check nvidia-smi, modinfo -F license nvidia and glxinfo -B."
+graphics_verify_kernel open "$version"

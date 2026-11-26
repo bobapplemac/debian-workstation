@@ -1,5 +1,10 @@
 # Dependency inventory and trust
 
+Older NVIDIA cards unsupported by the open module can use a separately consented
+native Debian nvidia-driver/nvidia-kernel-dkms/nvidia-smi fallback. It adds no vendor
+source: the temporary open-driver probe is restored first. Debian's authenticated
+GPU manifest must support every detected NVIDIA adapter before the offer is made.
+
 Optional physical GPU support adds NVIDIA's signed Debian 13 driver repository,
 key fingerprint 02182E60104FCDC26EAE1B8597A5D4CB8793F200 and an exact driver/runtime
 allowlist (all other vendor packages blocked). The selected open kernel module

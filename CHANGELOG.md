@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Offer a separately consented, GPU-validated native Debian proprietary NVIDIA
+  fallback for older cards unsupported by the preferred open module.
+
 - Restore normal adduser password and Full Name prompts for newly created accounts.
 - Detect physical graphics adapters and offer native Intel/AMD firmware/Mesa or
   the authenticated NVIDIA open-module stack, with supported-GPU and Secure Boot checks.

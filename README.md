@@ -127,6 +127,7 @@ bash /usr/local/lib/debian-workstation/install.sh --phase session \
 Configuration is strict `KEY=value` data, with no quoting or shell expansion.
 Options cover account creation, passwordless sudo (off by default), guest type,
 `GRAPHICS_DRIVERS=ask|yes|no` (default ask),
+`NVIDIA_LEGACY=ask|yes|no` (separate consent for a compatible older Debian driver),
 Notepadqq, 1Password desktop/CLI, Core Fonts, optional archive paths, and
 `NEMO_REF` (default `main`, or an explicit revision). `--module` accepts `base`,
 `network`, `repositories`, `desktop`, `graphics`, `assets`, `applications`, or `all`.

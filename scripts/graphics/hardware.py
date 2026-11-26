@@ -18,7 +18,11 @@ def detect(root=Path('/sys/bus/pci/devices')):
     return devices
 
 
-def supported(devices, manifest):
+class UnsupportedGPU(ValueError):
+    pass
+
+
+def supported(devices, manifest, require_open=True):
     chips = manifest.get('chips')
     if not isinstance(chips, list):
         raise ValueError('Invalid NVIDIA supported-GPU manifest')
@@ -29,10 +33,11 @@ def supported(devices, manifest):
         candidates = [chip for chip in chips if int(chip['devid'], 16) == int(device['device'], 16)
                       and ('subvendorid' not in chip or int(chip['subvendorid'], 16) == int(device['subsystem_vendor'], 16))
                       and ('subdevid' not in chip or int(chip['subdevid'], 16) == int(device['subsystem_device'], 16))]
-        matches = [chip for chip in candidates if not chip.get('legacybranch') and 'kernelopen' in chip.get('features', [])]
+        matches = [chip for chip in candidates if not chip.get('legacybranch')
+                   and (not require_open or 'kernelopen' in chip.get('features', []))]
         if not matches:
-            raise ValueError(f'NVIDIA {device["device"]} at {device["slot"]} is not supported by this candidate open module; '
-                             'older/proprietary-only and unknown GPUs require a separate reviewed installation')
+            raise UnsupportedGPU(f'NVIDIA {device["device"]} at {device["slot"]} is not supported by this candidate '
+                                 f'{"open module" if require_open else "Debian driver"}; no incompatible driver will be installed')
         result.append(matches[0]['name'])
     if not result:
         raise ValueError('No NVIDIA display adapter detected')
@@ -65,9 +70,13 @@ if __name__ == '__main__':
                   else 'native' if native_packages(devices) else 'none')
         elif action == 'native-packages':
             print('\n'.join(native_packages(json.loads(Path(sys.argv[2]).read_text()))))
-        elif action == 'supported':
-            print('\n'.join(supported(json.loads(Path(sys.argv[2]).read_text()), json.loads(Path(sys.argv[3]).read_text()))))
+        elif action in ('supported', 'supported-debian'):
+            print('\n'.join(supported(json.loads(Path(sys.argv[2]).read_text()), json.loads(Path(sys.argv[3]).read_text()),
+                                      require_open=action == 'supported')))
         else:
             raise ValueError('Unknown hardware operation')
+    except UnsupportedGPU as error:
+        print(f'Graphics compatibility: {error}', file=sys.stderr)
+        sys.exit(42)
     except (ValueError, OSError, KeyError) as error:
         sys.exit(f'Graphics check stopped: {error}')

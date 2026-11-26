@@ -14,6 +14,11 @@ Gear Lever and Notepadqq retain their upstream licenses. They are downloaded or
 installed, not embedded/relicensed by this repository. Consult package copyright
 files and their official source repositories listed in dependencies.md.
 
+The native Cinnamon screensaver retains its upstream license. The installer
+adapts only GTK presentation statements in the installed package source and
+preserves native authentication; it does not vendor or relicense the full
+screensaver. Consult /usr/share/doc/cinnamon-screensaver/copyright on the system.
+
 1Password is proprietary and supplied by its official repository. Microsoft Core
 Fonts are installed through Debian's contrib package under Microsoft's font
 terms; the package/license is not converted into 0BSD. Windows cursors and

@@ -58,8 +58,8 @@ pipeline: look for the installer's explicit completion message.
 
 The installer downloads one resolved repository commit, validates its archive,
 and runs the same implementation as the local method. No published release is
-required. These URLs will serve the implementation only after it is pushed;
-local development changes are not yet available remotely.
+required. The `main` URLs serve the latest published commit; local uncommitted
+changes are not included.
 
 **Reboot when the system phase finishes**, then sign in normally to Cinnamon
 using X11. A terminal opens to finish session-dependent configuration. Allow Gear
@@ -84,7 +84,8 @@ or forcibly restarts LightDM or Cinnamon.
 - NetworkManager migration staged at reboot; VMware/KVM/Hyper-V guest integration
   selected automatically where supported.
 - Physical GPU detection and optional native Intel/AMD firmware/Mesa or NVIDIA
-  open kernel modules with matching vendor libraries. See [graphics setup](docs/graphics.md),
+  open kernel modules, with a separately consented compatible Debian proprietary
+  fallback for older cards. See [graphics setup](docs/graphics.md),
   including the RTX 5060 Ti and Secure Boot prerequisites.
 - GNOME Software, system Flathub and Gear Lever, update checks and notifications
   with manual application update installation.
@@ -105,12 +106,12 @@ and security sources, sudo, SSH, Chrony, and basic guest tools. It explicitly
 selects no unattended update policy. Workstation setup creates the desktop user
 when needed and adds desktop features without redesigning that base.
 
-Use a disposable/fresh VM for initial acceptance. Only Debian 13 amd64 Cinnamon
-X11 is targeted; VMware is the initial acceptance platform. Wayland, other
+Use a fresh Debian 13 amd64 installation. The console-to-Cinnamon X11 workflow
+is validated on VMware. Wayland, other
 desktops/distributions/architectures and arbitrary existing network configurations
 are unsupported. Physical hardware and other hypervisors are not yet acceptance
 validated. Internet access is required. If using a conventional minimal Debian
-system, install `bash python3 ca-certificates curl sudo` first as root, provide
+system, install `bash python3 ca-certificates curl wget sudo` first as root, provide
 working Debian Trixie/security sources (including contrib for Core Fonts), and
 grant your regular account sudo access before running as that account.
 
@@ -133,8 +134,10 @@ Notepadqq, 1Password desktop/CLI, Core Fonts, optional archive paths, and
 `NEMO_REF` (default `main`, or an explicit revision). `--module` accepts `base`,
 `network`, `repositories`, `desktop`, `graphics`, `assets`, `applications`, or `all`.
 System modules require their normal prerequisites; rerunning a module is intended
-after an initial full installation. A full rerun preserves managed configuration
-and unrelated customizations; conflicting user edits stop with diagnostics.
+after an initial full installation. Reruns reapply the selected desktop defaults,
+including native GSettings preferences. Unrelated settings are retained; edited
+generated user assets stop with diagnostics rather than being discarded. Existing
+KDE/other-desktop conversions are outside the supported fresh-install workflow.
 
 Debian packages, signed external APT packages and Flatpaks receive ordinary
 upstream updates. Notepadqq installs the latest stable release initially, verifies
@@ -190,8 +193,8 @@ No reset/reinstall of the whole desktop is required. See
 and [development record](docs/progress.md).
 Run `bash scripts/verify.sh` in the desktop session after installation.
 
-Real screenshots will be added under [docs/screenshots](docs/screenshots/README.md)
-after capture on the accepted workstation. None are fabricated.
+The [screenshots directory](docs/screenshots/README.md) describes the real captures
+to collect. VM acceptance is complete; sanitized screenshots are not yet committed.
 
 ## License
 

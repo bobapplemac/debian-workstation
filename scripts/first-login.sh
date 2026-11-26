@@ -3,8 +3,8 @@ set -Eeuo pipefail
 root=/usr/local/lib/debian-workstation
 state=${XDG_STATE_HOME:-$HOME/.local/state}/debian-workstation
 mkdir -p "$state"
-# Hash the persisted implementation, not a timestamp or a temporary download path.
-signature=$({ find "$root/scripts" "$root/modules" "$root/assets" -type f -print0; printf '%s\0' "$root/session.conf"; } | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+# Hash persisted implementation inputs, excluding generated Python bytecode.
+signature=$({ find "$root/lib" "$root/scripts" "$root/modules" "$root/assets" -type d -name __pycache__ -prune -o -type f ! -name '*.pyc' -print0; printf '%s\0' "$root/install.sh" "$root/session.conf"; } | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
 if [[ -f $state/session.completed && $(cat "$state/session.completed") == "$signature" ]]; then
     python3 "$root/scripts/repositories/notify.py"
     exit

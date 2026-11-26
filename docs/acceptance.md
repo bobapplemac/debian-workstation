@@ -16,8 +16,8 @@ additional hardware/network scenarios remain separate from the accepted VM basel
 2. Confirm working Internet/DNS, Debian Trixie/security sources and root access.
    The reference base creates root only. A regular account and sudo are also
    supported; in that case the installer chooses that logged-in regular account.
-3. Transfer this workstation checkout/archive to the VM. Before publishing, use
-   local files; main/raw URLs will not contain unpublished development code.
+3. Use the current published `main` bootstrap or transfer a checkout/archive to
+   the VM. For unpublished changes, use the local checkout/archive instead.
 4. Optional: run the two main-branch Windows PowerShell exporters from the README
    and copy their ZIP outputs into `debian-workstation/input/`. Do not put them in
    a Git commit or public test log. For the first trial, also test missing ZIPs.

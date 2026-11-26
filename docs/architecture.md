@@ -11,9 +11,9 @@ Adwaita/Papirus greeter afterward. The implementation uses that final appearance
 No missing CSS, SVG or supporting source artifact was found.
 
 Order: base preparation -> validate/stage networking -> narrowly allowlisted
-repositories -> curated desktop packages -> optional artwork/greeter -> software
+repositories -> curated desktop packages -> optional physical GPU drivers -> optional artwork/greeter -> software
 repositories/Flatpak -> durable first-login continuation -> read-only verification.
-The first four modules are system operations. Session preferences use the actual
+All seven provisioning modules run in the system phase. Session preferences use the actual
 logged-in Cinnamon user's GSettings/D-Bus. No fake root D-Bus session is used.
 Offline dconf databases could set simple preferences, but do not configure live
 applets, portal permissions, GTK icon verification or grid initialization; keeping
@@ -38,8 +38,8 @@ including offline network recovery instructions. Historical notes, local configu
 proprietary inputs and screenshot binaries are excluded from that snapshot.
 
 `lib/` holds the small runner and shared shell functions. `modules/` contains
-coarse provisioning units. `scripts/` groups cursor, font, desktop, network,
-repository, Notepadqq, Gear Lever and Windows helpers. Shared configuration,
+coarse provisioning units. `scripts/` groups cursor, font, desktop, graphics, network,
+repository, session, Notepadqq, Gear Lever and Windows helpers. Shared configuration,
 safe ZIP extraction and file-update routines remain at its root. Substantial CSS
 and SVG assets are extracted unchanged from the main playbook. The artwork utility
 is named `mint-y-app-icons.py`, including its installed command.
@@ -50,12 +50,21 @@ explicitly opt-in. No account name, host address, private DNS workaround or
 credential from development is part of the implementation.
 
 Updates preserve unrelated INI keys, CSS, Xresources and custom shortcut IDs.
+Selected native GSettings and applet defaults are reapplied during session setup.
+The continuation signature covers lib/, modules/, scripts/, assets/, install.sh
+and session.conf, so implementation changes invalidate the completion marker.
 Dedicated user assets have content-hash ownership records and refuse conflicting
 unmanaged content or later user edits. Changed files receive first-change backups.
 Theme/application artwork is not written into distribution-owned binaries or
 themes: local icon overlays are used. Rerun the session module after relevant
 theme/application updates to refresh artwork slot discovery; existing symlinks
 already reference package artwork paths, so there is no dedicated icon watcher.
+
+The [native lock-screen presentation](lock-screen.md) uses native clock settings,
+account display-name metadata and guarded GTK constructor adaptations. The two
+package-source presentation changes preserve native authentication and settings;
+an APT hook reapplies them to updated package files. No alternate locker or
+authentication handoff is part of this architecture.
 
 User-requested changes from the original specification: Nemo Grid Compensator
 tracks main by default; Notepadqq initially uses the latest stable GitHub release;

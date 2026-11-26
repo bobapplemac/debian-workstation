@@ -1,11 +1,13 @@
 # Fresh-install acceptance procedure
 
-Status: **initial implementation ready for a controlled fresh-VM trial, not
-release/production validated**. Do not reinstall the original R&D workstation.
-Use a genuinely new disposable VMware VM and the console/server ISO created by
-debian-netinst-customizer. Keep its VM console available during networking tests.
-The disposable integration VM used in development already had the customized
-desktop; its successful module/session tests do not satisfy this acceptance gate.
+Status: **fresh-install VM validation complete — 2026-11-26**. The user confirmed
+the end-to-end workflow from a base Debian 13 installation to a fully functional
+Cinnamon desktop on a rebuilt VM. See [validation record](validation.md).
+
+This procedure remains the checklist for future regression trials. Use a fresh
+disposable VMware VM and the console/server ISO created by debian-netinst-customizer.
+Keep its console available during networking tests. Physical GPU/Secure Boot and
+additional hardware/network scenarios remain separate from the accepted VM baseline.
 
 ## Preparation
 

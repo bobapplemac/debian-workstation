@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Complete fresh-install VM validation from base Debian 13 to a fully functional
+  Cinnamon desktop, confirmed and accepted by the user on 2026-11-26.
+
 - Match the lock-screen clock to the login/panel 12-hour time with AM/PM; verify
   both the shared clock preference and the separate lock-screen format.
 - Keep Cinnamon's native account label above the lock-screen password box:

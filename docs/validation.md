@@ -1,4 +1,26 @@
-# Initial implementation validation — 2026-11-25
+# Validation record
+
+## Fresh-install VM acceptance complete — 2026-11-26
+
+The user rebuilt the test VM from a base Debian 13 installation, ran the installer
+through to a fully functional Cinnamon desktop, and confirmed that everything
+looked good. The user has explicitly accepted end-to-end VM validation as complete.
+This validates the fresh-install workflow, rather than only rerunning modules on
+the original development desktop. The accepted source includes the native
+lock-screen fixes in e134a31; 89378a6 adds the subsequent README-only adjustment.
+
+Earlier fresh-VM feedback established successful system provisioning, reboot and
+first-login continuation, Notepadqq repair, desktop behavior and portal lifecycle.
+The final rebuilt-VM confirmation accepts the resulting integrated workflow.
+The most recent automated suite recorded 53 passes and six NetworkManager-dependent
+skips, with ShellCheck and APT hook syntax checks passing.
+
+Physical GPU installation/boot, Secure Boot enrollment and additional hardware or
+network profiles retain their separately documented validation status. VM acceptance
+does not assert those scenarios were tested. No release tag is created by this record.
+
+The sections below preserve earlier development checkpoints and the evidence
+available at those stages; their pending-work statements are historical.
 
 ## Native Cinnamon lock-screen follow-up — 2026-11-26
 
@@ -16,8 +38,8 @@ idempotence and APT-hook warning behavior are covered by regression checks.
 Final suite: 53 passed, six NetworkManager-dependent skips (59 total), including
 the opt-in native systemd lifecycle test. ShellCheck and APT hook syntax passed.
 
-These checks validate the targeted changes on the existing VM; a new complete
-fresh-install run remains a separate acceptance step.
+These checks initially validated the targeted changes on the existing VM. The
+subsequent complete fresh-install acceptance is recorded above.
 
 ## Separately validated older NVIDIA branch
 

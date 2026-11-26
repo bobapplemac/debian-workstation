@@ -1,5 +1,16 @@
 # Development record
 
+## Fresh-install VM validation complete — 2026-11-26
+
+The user rebuilt the VM from base Debian 13 and accepted the complete path to a
+fully functional Cinnamon desktop. Fresh-install VM acceptance is complete for
+the source including e134a31's native lock-screen fixes and the subsequent
+README-only commit 89378a6. No alternate-locker experiments are included.
+See [validation record](validation.md) for evidence and hardware-specific scope.
+
+Entries below are historical development checkpoints; their pending acceptance
+statements describe the situation at the time, not the current VM status.
+
 ## Native Cinnamon lock-screen presentation
 
 The accepted implementation keeps Cinnamon's native lock/authentication stack and
@@ -13,7 +24,7 @@ The user visually accepted both layouts on the VM. The production transformer
 reproduced those files exactly from pristine package sources, and root reruns
 were idempotent. Final regression suite: 53 passed, six nmcli skips; ShellCheck
 and APT syntax checks passed. No alternate locker or authentication handoff code
-is included. A complete new fresh-install acceptance remains outstanding.
+is included. The subsequent complete fresh-install acceptance is recorded above.
 
 ## Older NVIDIA fallback
 
@@ -245,7 +256,7 @@ main-branch irm/iex exporter quick start; .py artwork helper and grouped scripts
 These checks do not constitute a genuinely fresh install, live ifupdown-to-NM
 reboot migration, or user visual/interactive acceptance. No release-readiness claim.
 
-## Remaining acceptance work
+## Historical remaining acceptance work
 
 Follow docs/acceptance.md on a genuinely fresh reference console VM. Recheck account
 creation/password prompts, sudo denial/authentication, first-login autostart and

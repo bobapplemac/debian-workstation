@@ -5,8 +5,9 @@ Mint-Y Blue appearance, consistent window controls, familiar shortcuts and panel
 behavior, balanced Nemo desktop icons, and native software management.
 
 This provisions Debian; it does not create a distribution or installation ISO.
-**Development / clean-install acceptance pending.** The existing R&D desktop is
-the appearance reference, not evidence of an end-to-end fresh installation.
+**Fresh-install VM validation complete.** The full workflow has been tested from
+a base Debian 13 installation to a fully functional Cinnamon desktop. See the
+[validation record](docs/validation.md) for scope and results.
 
 ## Quick start
 

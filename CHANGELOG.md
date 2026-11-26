@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed first-login Notepadqq discovery when Gear Lever adds a version/hash suffix
+  to its display name; reruns reuse the installed AppImage and configure updates.
+
 - Initial Debian 13 Cinnamon X11 provisioning implementation and staged lifecycle.
 - Strict NetworkManager translation with reboot-boundary commit/recovery.
 - Narrow Mint repository policy, actual APT candidate/solver tests and security audit.

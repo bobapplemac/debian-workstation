@@ -1,5 +1,29 @@
 # Development record
 
+## Fresh-install feedback: Notepadqq discovery
+
+The first user-run fresh Debian trial completed system provisioning, rebooted and
+started the graphical continuation automatically. Appearance/artwork checks,
+Nemo Grid Compensator initialization/startup and Gear Lever's background portal
+preference succeeded. Notepadqq integration itself succeeded but the continuation
+stopped: Gear Lever recorded `Notepadqq (543d74)` and our exact-name lookup missed
+it. Earlier runtime validation reused an existing plain-name installation and did
+not cover this fresh KEEP-mode name. Full acceptance remains incomplete.
+
+The fix accepts a complete Notepadqq name with an optional generated parenthesized
+suffix, rejects multiple matches and malformed inventory, and uses Gear Lever's
+native --replace integration mode for new installs. An existing suffixed AppImage
+is reused without downloading or integrating another copy. Focused tests cover
+the reported inventory, ordinary/versioned names, malformed data, ambiguity, and
+mocked fresh integration plus rerun through the actual shell installer.
+
+Local follow-up validation on the Windows Python 3.9 host: 31 tests discovered,
+20 passed and 11 Linux-dependent cases skipped; Bash syntax and git diff checks
+passed. Five new lookup cases passed, including the reported fresh-install name.
+The two new shell integration cases require Linux and have not run in this
+follow-up environment. This result does not supersede the earlier Debian test
+record or establish that the fresh VM's continuation now finishes.
+
 ## Scope and current boundary
 
 Build the supplied Debian 13 amd64 Cinnamon X11 reference experience as a small

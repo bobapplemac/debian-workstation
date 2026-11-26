@@ -88,6 +88,19 @@ initialization failures at either boundary. See [session lifecycle](session-life
 
 ## Visual and interactive checks
 
+- Lock with Win+L and check the clock uses 12-hour time with AM/PM (for example,
+  11:42 PM), matching the login screen and desktop. Unlock, then repeat after
+  logout/login to confirm the preference persists.
+- Confirm the lock screen identifies the locked account above the password box
+  by full name, or username if no full name was supplied, matching the login screen.
+  The desktop module initializes an empty account display name to its username;
+  it preserves any supplied full name. On a multi-user test system,
+  switch users and lock each session to confirm each shows its own identity.
+- Confirm time and date share the same horizontal center and the name is
+  centered over the entry alone, excluding the two side buttons. Check normal
+  unlocking and Cinnamon's native Screensaver settings. See [native lock screen](lock-screen.md)
+  for guarded package-update behavior and recovery.
+
 - LightDM: Debian default wallpaper, Adwaita/Papirus, intended clock/layout,
   regular-user selection, manual login and matching 32px cursor theme.
 - GTK3, GTK4/libadwaita and Muffin: correct glyphs, 6px upper corners on ordinary

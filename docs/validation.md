@@ -1,5 +1,24 @@
 # Initial implementation validation — 2026-11-25
 
+## Native Cinnamon lock-screen follow-up — 2026-11-26
+
+The test VM retained native Cinnamon locking and settings. The user visually
+confirmed AM/PM time, time/date centering, and a name centered over the password
+field alone, excluding the two buttons. Empty account-name metadata was given a
+username display-name fallback, and normal native unlocking was confirmed.
+The alternate-locker experiments are excluded from the installer.
+
+The production helper transformed pristine Debian 6.4.0-1 clock/unlock sources
+into byte-identical copies of the visually accepted VM files. Its root installer
+recognized both already-applied changes without altering contents or restarting
+the locker. Preflight/source preservation, drift rejection, symlink rejection,
+idempotence and APT-hook warning behavior are covered by regression checks.
+Final suite: 53 passed, six NetworkManager-dependent skips (59 total), including
+the opt-in native systemd lifecycle test. ShellCheck and APT hook syntax passed.
+
+These checks validate the targeted changes on the existing VM; a new complete
+fresh-install run remains a separate acceptance step.
+
 ## Separately validated older NVIDIA branch
 
 Signed APT and authenticated package-manifest tests passed for both driver paths:
@@ -13,7 +32,7 @@ or boot has been performed.
 ## Account setup and graphics follow-up
 
 New-account setup now delegates directly to native interactive adduser, retaining
-Full Name and the usual optional account fields; existing GECOS data is not rewritten.
+Full Name and the usual optional account fields; supplied GECOS names are preserved.
 Syntax checks cover this change; the revised native account wizard still requires
 confirmation on the next fresh install.
 

@@ -17,7 +17,9 @@ def set_values(schema, values, path=None):
         if not s.set_value(key,variant): raise ValueError(f'Unable to set {schema} {key}')
 
 def main(theme):
-    set_values('org.cinnamon.desktop.interface',{'gtk-theme':'Mint-Y-Blue','icon-theme':'Mint-Y-Blue','cursor-theme':theme,'cursor-size':32})
+    set_values('org.cinnamon.desktop.interface',{'gtk-theme':'Mint-Y-Blue','icon-theme':'Mint-Y-Blue','cursor-theme':theme,'cursor-size':32,'clock-use-24h':False})
+    # The panel's custom format does not configure Cinnamon's separate lock clock.
+    set_values('org.cinnamon.desktop.screensaver',{'time-format':'%-I:%M %p','use-custom-format':True})
     set_values('org.gnome.desktop.interface',{'cursor-theme':theme,'cursor-size':32})
     set_values('org.cinnamon.theme',{'name':'Mint-Y-Dark-Blue'})
     set_values('org.cinnamon.desktop.wm.preferences',{'button-layout':':minimize,maximize,close'})

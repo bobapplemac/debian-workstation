@@ -1,5 +1,20 @@
 # Development record
 
+## Native Cinnamon lock-screen presentation
+
+The accepted implementation keeps Cinnamon's native lock/authentication stack and
+settings. Session defaults use AM/PM time. The desktop step supplies a username
+display name only for an empty Full Name field. Guarded constructor adaptations
+center clock/date text and align the native name label to the password field,
+using measured side-button width. Backups, an APT reapplication hook and read-only
+verification cover package updates. See [lock-screen setup](lock-screen.md).
+
+The user visually accepted both layouts on the VM. The production transformer
+reproduced those files exactly from pristine package sources, and root reruns
+were idempotent. Final regression suite: 53 passed, six nmcli skips; ShellCheck
+and APT syntax checks passed. No alternate locker or authentication handoff code
+is included. A complete new fresh-install acceptance remains outstanding.
+
 ## Older NVIDIA fallback
 
 After the authorized account/graphics push (bf1dd9b), the user suggested an older

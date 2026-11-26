@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Match the lock-screen clock to the login/panel 12-hour time with AM/PM; verify
+  both the shared clock preference and the separate lock-screen format.
+- Keep Cinnamon's native account label above the lock-screen password box:
+  preserve the full name, or initialize an empty account display name to the
+  username so AccountsService cannot blank the label. This also matches login.
+- Center native clock/date text and align the account name over the password
+  field alone; guard package-layout changes and reapply after APT transactions.
+
 - Offer a separately consented, GPU-validated native Debian proprietary NVIDIA
   fallback for older cards unsupported by the preferred open module.
 

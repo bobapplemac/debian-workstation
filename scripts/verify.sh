@@ -16,6 +16,10 @@ check 'Desktop packages' dpkg-query -W cinnamon nemo lightdm lightdm-gtk-greeter
 check 'Repository policy' python3 "$root/scripts/repositories/policy.py" validate
 check 'APT full-upgrade simulation' bash -c 'output=$(LC_ALL=C apt-get -s full-upgrade) || exit; printf "%s\n" "$output"; ! grep -q "^Remv " <<< "$output"'
 check 'GTK theme' bash -c '[[ $(gsettings get org.cinnamon.desktop.interface gtk-theme) == "'\''Mint-Y-Blue'\''" ]]'
+check '12-hour clock preference' bash -c '[[ $(gsettings get org.cinnamon.desktop.interface clock-use-24h) == false ]]'
+check '12-hour lock-screen clock' bash -c '[[ $(gsettings get org.cinnamon.desktop.screensaver use-custom-format) == true && $(gsettings get org.cinnamon.desktop.screensaver time-format) == "'\''%-I:%M %p'\''" ]]'
+check 'Native login/lock-screen display name' python3 -c 'import os,pwd; a=pwd.getpwuid(os.getuid()); name=a.pw_gecos.split(",",1)[0].strip(); print(name); assert name, "Account display name is empty; rerun the desktop module to apply the username fallback"'
+check 'Native lock-screen text alignment' python3 "$root/scripts/desktop/lock-screen.py" verify
 check 'Application artwork and glyph resolution' "$HOME/.local/bin/mint-y-app-icons.py" verify
 check 'Portal accent color' gdbus call --session --dest org.freedesktop.portal.Desktop --object-path /org/freedesktop/portal/desktop --method org.freedesktop.portal.Settings.Read org.freedesktop.appearance accent-color
 check 'Grid compensator' systemctl --user is-active nemo-grid-compensator.service

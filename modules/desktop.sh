@@ -1,6 +1,13 @@
 #!/bin/bash
 desktop_main() {
     local packages=() exclusions=() line
+    # Cinnamon already places the account's real name above the password box.
+    # Its AccountsService callback can replace the username fallback with an
+    # empty real name. Give nameless accounts a username display name instead,
+    # preserving any supplied full name and all other account details.
+    if [[ -z $(getent passwd "$DESKTOP_USER" | cut -d: -f5 | cut -d, -f1 | tr -d '[:space:]') ]]; then
+        chfn -f "$DESKTOP_USER" "$DESKTOP_USER"
+    fi
     while IFS= read -r line; do [[ -z $line || $line == \#* ]] || packages+=("$line"); done < "$DW_ROOT/assets/packages.txt"
     # Prevent task recommendations from selecting alternative mail/torrent/office providers.
     # Fail instead of removing any existing excluded application.
@@ -14,6 +21,8 @@ desktop_main() {
     done < "$DW_ROOT/assets/exclusions.txt"
     simulate "${packages[@]}" "${exclusions[@]}"
     apt_install "${packages[@]}" "${exclusions[@]}"
+    bash "$DW_ROOT/scripts/desktop/install-lock-screen.sh"
+    atomic_install "$DW_ROOT/assets/99debian-workstation-lock-screen" /etc/apt/apt.conf.d/99debian-workstation-lock-screen
     local hypervisor=$HYPERVISOR
     [[ $hypervisor != auto ]] || hypervisor=$(systemd-detect-virt || true)
     case $hypervisor in

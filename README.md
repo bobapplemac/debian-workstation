@@ -76,6 +76,8 @@ or forcibly restarts LightDM or Cinnamon.
 - Mint-Y-Blue GTK/icons, Mint-Y-Dark-Blue shell, original application artwork,
   tested GTK3/GTK4 window controls and symbolic glyphs.
 - Adwaita/Papirus LightDM GTK greeter with Debian's default wallpaper.
+- Native Cinnamon lock screen with 12-hour time, centered time/date and the full
+  name (username fallback) centered above the password field. See [lock-screen setup](docs/lock-screen.md).
 - Desktop Computer/Home/Trash/volume icons, manual modern grid through
   [Nemo Grid Compensator](https://github.com/bobapplemac/nemo-grid-compensator),
   Win+L, Ctrl+Shift+Esc, individual titled taskbar buttons, two-line US clock,

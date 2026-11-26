@@ -48,8 +48,6 @@ and wget already installed:
 
 ```bash
 wget -qO- https://raw.githubusercontent.com/bobapplemac/debian-workstation/main/install.sh | bash
-# Or:
-curl -fsSL https://raw.githubusercontent.com/bobapplemac/debian-workstation/main/install.sh | bash
 ```
 
 For this remote method, optional archives are found in **`./input/` beneath the

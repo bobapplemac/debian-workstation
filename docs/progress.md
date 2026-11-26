@@ -1,5 +1,26 @@
 # Development record
 
+## Fresh-install follow-up: successful continuation and menu-name repair
+
+The user applied commit 01125e2 to the fresh VM and reported successful setup
+completion. This establishes the real first-login continuation and retry path on
+that VM; the remaining automated verifier and visual/interactive acceptance checks
+are still pending. It does not establish release readiness.
+
+The original KEEP-mode installation also left `Notepadqq (543d74)` in the menu.
+The earlier fix prevented that mode for future integrations but deliberately reused
+the existing AppImage, so it did not repair its label. The installer now repairs
+the generated Name (including matching localized names) in the exact user desktop
+entry reported by Gear Lever. It verifies X-AppImage-Name and TryExec first,
+preserves comments/actions/commands/icons, backs up the original outside the
+applications directory, and refuses custom names or unrelated entries. No AppImage
+reinstall or update-source reset is needed for the standalone --repair-name mode.
+
+Follow-up Windows validation: eight focused lookup/repair tests passed; two Linux
+shell integration cases remain skipped on this host. The repair is idempotent in
+file fixtures. Actual Cinnamon menu refresh and real launcher repair on the fresh
+VM await the user's verification. The next push is explicitly user-authorized.
+
 ## Fresh-install feedback: Notepadqq discovery
 
 The first user-run fresh Debian trial completed system provisioning, rebooted and

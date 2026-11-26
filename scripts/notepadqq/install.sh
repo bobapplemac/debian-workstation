@@ -23,5 +23,6 @@ fi
     exit 1
 }
 gearlever --set-update-source "$path" --manager GithubUpdater repo=notepadqq/notepadqq 'repo_filename=notepadqq-v*-linux-x86_64.AppImage' allow_prereleases=0
+gearlever --list-installed --json | python3 "$here/find-installed.py" --repair-name
 gearlever --list-installed
 gearlever --list-updates

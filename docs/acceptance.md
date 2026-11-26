@@ -95,6 +95,10 @@ and actual GTK4 controls separately. Policy fallback can legitimately change it.
   Notepadqq opens, is managed once and has GithubUpdater configured. Latest initial
   release selection and manual update checking work. 1Password desktop/CLI launch
   without provisioning credentials or accounts.
+  The Notepadqq menu label must be exactly `Notepadqq`, without a version/hash
+  suffix. Existing KEEP-mode entries are repaired during its installer step;
+  the original launcher is retained at
+  `~/.local/state/debian-workstation/backups/notepadqq/`.
 
 ## Rerun, failures and security checks
 

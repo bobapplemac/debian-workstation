@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Repair existing Gear Lever-generated Notepadqq menu suffixes, preserving launcher
+  commands, icons, desktop actions and update configuration with an original backup.
+
 - Fixed first-login Notepadqq discovery when Gear Lever adds a version/hash suffix
   to its display name; reruns reuse the installed AppImage and configure updates.
 
